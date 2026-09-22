@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soccer Cage — Plataforma de Inventario y Ventas</title>
+<meta name="description" content="Prototipo funcional de gestión de inventario y e-commerce para confección de uniformes deportivos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230b0c0e'/><text y='68' x='50' text-anchor='middle' font-size='52' font-family='sans-serif' font-weight='bold' fill='%23c9a227'>SC</text></svg>">
+</head>
+<body>
+
+<!-- ============ BARRA SUPERIOR ============ -->
+<header class="topbar">
+  <button class="icon-btn sidebar-toggle" id="sidebarToggle" data-i18n-aria="nav.openMenu" style="color:#9aa1ad">
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M3 6h18M3 12h18M3 18h18"/>
+    </svg>
+  </button>
+
+  <div class="brand">
+    <div class="brand-mark">SC</div>
+    <div>
+      <div class="brand-name">Soccer Cage</div>
+      <div class="brand-sub" data-i18n="nav.brandSub">Miami · FL</div>
+    </div>
+  </div>
+
+  <nav class="mode-switch" role="tablist" aria-label="Cambiar vista">
+    <button class="mode-btn active" id="btnShop"  role="tab" aria-selected="true" data-i18n="nav.shop">Tienda</button>
+    <button class="mode-btn"        id="btnAdmin" role="tab" aria-selected="false" data-i18n="nav.admin">Panel admin</button>
+    <button class="mode-btn"        id="btnCompare" role="tab" aria-selected="false" data-i18n="nav.compare">Análisis</button>
+  </nav>
+
+  <div class="topbar-actions">
+    <button class="lang-btn" id="langBtn" aria-label="Change language / Cambiar idioma" title="Change language / Cambiar idioma">
+      <span id="langBtnLabel">EN</span>
+    </button>
+    <button class="cart-btn" id="cartBtn" data-i18n-aria="nav.openCart">
+      <svg class="ico" style="width:17px;height:17px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+      </svg>
+      <span class="label" data-i18n="nav.cart">Carrito</span>
+      <span class="cart-count" id="cartCount">0</span>
+    </button>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">CM</div>
+      <span id="userName">Carlos Méndez</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ APLICACIÓN: TIENDA ============ -->
+<main class="app active" id="appShop">
+  <div class="shop-wrap">
+
+    <section class="hero">
+      <div class="hero-eyebrow">
+        <svg style="width:13px;height:13px" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+        Confección propia · Miami, Florida
+      </div>
+      <h1>Uniformes de competición fabricados para tu club</h1>
+      <p>Producción propia, control de tallaje real y entrega verificada. Cada pedido descuenta inventario en tiempo real.</p>
+      <div class="hero-actions">
+        <button class="btn btn-gold btn-lg" id="heroShop">Ver catálogo</button>
+        <button class="btn btn-lg" id="heroCustom" style="background:transparent;color:#fff;border-color:#3a3f4a">Diseño personalizado</button>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="v" id="heroSkus">—</div><div class="l">Referencias activas</div></div>
+        <div class="hero-stat"><div class="v" id="heroUnits">—</div><div class="l">Unidades en stock</div></div>
+        <div class="hero-stat"><div class="v">15–20</div><div class="l">Días producción</div></div>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>Catálogo</h2>
+        <p class="muted tiny" style="margin-top:3px">La disponibilidad mostrada es el stock real del sistema.</p>
+      </div>
+      <span class="muted tiny" id="shopResultCount"></span>
+    </div>
+
+    <div class="shop-toolbar">
+      <div class="search-box">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input class="input" id="shopSearch" type="search" placeholder="Buscar por nombre, SKU o equipo…" aria-label="Buscar productos">
+      </div>
+      <select class="select" id="shopSort" style="width:auto;min-width:175px" aria-label="Ordenar">
+        <option value="rel">Destacados primero</option>
+        <option value="price-asc">Precio: menor a mayor</option>
+        <option value="price-desc">Precio: mayor a menor</option>
+        <option value="name">Nombre (A–Z)</option>
+        <option value="stock">Mayor disponibilidad</option>
+      </select>
+      <label class="chip" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="shopHideOut" style="cursor:pointer;accent-color:#c9a227"> Ocultar agotados
+      </label>
+    </div>
+
+    <div class="chips" id="shopCats" style="margin-bottom:var(--s5)"></div>
+    <div class="product-grid" id="shopGrid"></div>
+  </div>
+</main>
+
+<!-- ============ APLICACIÓN: PANEL ADMIN ============ -->
+<div class="app" id="appAdmin">
+  <div class="admin-layout">
+
+    <aside class="sidebar" id="sidebar">
+      <div class="side-label" data-i18n="side.operations">Operación</div>
+      <button class="side-link active" data-page="dashboard">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        <span data-i18n="side.dashboard">Dashboard</span>
+      </button>
+      <button class="side-link" data-page="inventory">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
+        <span data-i18n="side.inventory">Inventario</span>
+      </button>
+      <button class="side-link" data-page="products">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z"/></svg>
+        <span data-i18n="side.products">Productos</span>
+      </button>
+      <button class="side-link" data-page="movements">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+        <span data-i18n="side.movements">Movimientos</span>
+      </button>
+
+      <div class="side-label" data-i18n="side.commercial">Comercial</div>
+      <button class="side-link" data-page="orders">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 01-8 0"/></svg>
+        <span data-i18n="side.orders">Pedidos</span>
+      </button>
+      <button class="side-link" data-page="customers">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span data-i18n="side.customers">Clientes</span>
+      </button>
+
+      <div class="side-label" data-i18n="side.control">Control</div>
+      <button class="side-link" data-page="alerts">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span data-i18n="side.alerts">Alertas</span>
+        <span class="side-badge" id="alertBadge">0</span>
+      </button>
+      <button class="side-link" data-page="reports">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span data-i18n="side.reports">Reportes</span>
+      </button>
+      <button class="side-link" data-page="settings">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span data-i18n="side.settings">Configuración</span>
+      </button>
+    </aside>
+
+    <section class="content">
+      <div class="page active" id="page-dashboard"></div>
+      <div class="page" id="page-inventory"></div>
+      <div class="page" id="page-products"></div>
+      <div class="page" id="page-movements"></div>
+      <div class="page" id="page-orders"></div>
+      <div class="page" id="page-customers"></div>
+      <div class="page" id="page-alerts"></div>
+      <div class="page" id="page-reports"></div>
+      <div class="page" id="page-settings"></div>
+    </section>
+  </div>
+</div>
+
+<!-- ============ APLICACIÓN: ANÁLISIS COMPARATIVO ============ -->
+<main class="app" id="appCompare">
+  <div class="cmp-wrap" id="cmpRoot"></div>
+</main>
+
+<!-- ============ CARRITO (DRAWER) ============ -->
+<div class="drawer-overlay" id="cartOverlay"></div>
+<aside class="drawer" id="cartDrawer" aria-label="Carrito de compra">
+  <div class="drawer-head">
+    <h2>Tu carrito</h2>
+    <button class="icon-btn" id="cartClose" aria-label="Cerrar carrito">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="cartBody"></div>
+  <div class="drawer-foot" id="cartFoot"></div>
+</aside>
+
+<!-- ============ MODALES ============ -->
+<div class="overlay" id="modalOverlay">
+  <div class="modal" id="modalBox" role="dialog" aria-modal="true"></div>
+</div>
+
+<div class="toast-zone" id="toastZone" aria-live="polite"></div>
+
+<script src="js/i18n.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/compare.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
