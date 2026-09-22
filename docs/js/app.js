@@ -3,7 +3,7 @@
    ============================================================ */
 
 const App = {
-  mode: 'shop',
+  mode: 'admin',
 
   init() {
     I18N.init();
@@ -25,7 +25,7 @@ const App = {
     Admin.init();
     Compare.init();
     this.syncUser();
-    this.setMode('shop');   // deja la barra coherente desde el arranque
+    this.setMode('admin');   // deja la barra coherente desde el arranque; Tienda queda oculta
 
     // Atajos de teclado para la demostración en vivo
     document.addEventListener('keydown', e => {
