@@ -46,7 +46,8 @@ const App = {
     // Atajos de teclado para la demostración en vivo
     document.addEventListener('keydown', e => {
       if (this.storefront || !e.altKey) return;
-      const m = { '1': 'shop', '2': 'admin', '3': 'compare' }[e.key];
+      // El análisis está oculto por ahora: sin atajo de teclado.
+      const m = { '1': 'shop', '2': 'admin' }[e.key];
       if (m) { e.preventDefault(); this.setMode(m); }
     });
   },
