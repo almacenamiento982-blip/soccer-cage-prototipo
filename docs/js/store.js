@@ -1,59 +1,81 @@
 /* ============================================================
    SOCCER CAGE — Núcleo de estado e inventario
-   Toda mutación de stock pasa por aquí. Ningún módulo de UI
-   modifica `stock` directamente: siempre vía applyMovement().
-   Esa es la regla que garantiza la trazabilidad.
+
+   Un solo inventario, varias tiendas. Toda mutación de stock pasa
+   por applyMovement(): ningún módulo de interfaz toca `stock`
+   directamente. Esa regla es la que garantiza la trazabilidad,
+   venga la salida de una venta, de un kit o de una entrega.
    ============================================================ */
 
-const DB_KEY = 'soccercage_db_v1';
+const DB_KEY = 'soccercage_db_v2';
+const DB_SCHEMA = 5;
+
+const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+const clone = o => JSON.parse(JSON.stringify(o));
 
 const Store = {
   state: null,
+  _clock: null,     // fecha simulada (solo para construir el historial de demo)
+  _silent: false,   // agrupa escrituras durante cargas masivas
 
   /* ---------- Persistencia ---------- */
+  versionTag() {
+    return DB_SCHEMA + ':' + (typeof CATALOG !== 'undefined' ? CATALOG.importedAt : '-');
+  },
+
   load() {
+    try { localStorage.removeItem('soccercage_db_v1'); } catch (e) { /* sin acceso a almacenamiento */ }
     try {
       const raw = localStorage.getItem(DB_KEY);
       if (raw) {
-        this.state = JSON.parse(raw);
-        if (this.state && this.state.products && this.state.products.length) return;
+        const st = JSON.parse(raw);
+        if (st && st.version === this.versionTag() && st.products && st.products.length) {
+          this.state = st;
+          return;
+        }
       }
     } catch (e) {
       console.warn('No se pudo leer localStorage, se reinicia la demo.', e);
     }
-    this.reset(true);
+    this.reset();
   },
 
   save() {
+    if (this._silent) return true;
     try {
       localStorage.setItem(DB_KEY, JSON.stringify(this.state));
+      return true;
     } catch (e) {
       console.warn('No se pudo guardar en localStorage.', e);
+      return false;
     }
   },
 
-  reset(silent) {
+  reset() {
     this.state = {
-      products:  JSON.parse(JSON.stringify(SEED.products)),
-      orders:    JSON.parse(JSON.stringify(SEED.orders)),
-      customers: JSON.parse(JSON.stringify(SEED.customers)),
-      movements: JSON.parse(JSON.stringify(SEED.movements)),
-      users:     JSON.parse(JSON.stringify(SEED.users)),
-      cart: [],
-      counters: { order: 10242, movement: 100, product: 100, customer: 100 },
-      settings: {
-        company: 'Soccer Cage LLC',
-        city: 'Miami, FL',
-        currency: 'USD',
-        lowStockGlobal: 8,
-        taxRate: 0,            // ver nota fiscal en el informe
-        shippingFlat: 9.00,
-        freeShippingOver: 250
-      },
+      version: this.versionTag(),
+      products:  SEED.buildProducts(),
+      stores:    clone(SEED.stores),
+      programs:  clone(SEED.programs),
+      roster:    clone(SEED.roster).map(e => Object.assign({ status: 'pendiente' }, e)),
+      users:     clone(SEED.users),
+      orders: [], customers: [], movements: [],
+      carts: {}, currentStore: 'camps', session: null,
+      counters: { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100 },
+      settings: { company: 'Soccer Cage', city: 'Miami, FL', currency: 'USD', lowStockGlobal: 4 },
       currentUser: 'u1'
     };
+    this._silent = true;
+    try { SEED.history(this); } finally { this._silent = false; this._clock = null; }
     this.save();
-    if (!silent && typeof UI !== 'undefined') UI.toast('ok', 'Demo reiniciada', 'Se restauraron los datos originales.');
+  },
+
+  nowISO() { return this._clock || new Date().toISOString(); },
+
+  /** Día local (YYYY-MM-DD) de una fecha ISO: las ventas "de hoy" son las del día local. */
+  dayKey(d) {
+    const x = new Date(d);
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
   },
 
   /* ---------- Accesores ---------- */
@@ -61,8 +83,26 @@ const Store = {
   get orders()    { return this.state.orders; },
   get customers() { return this.state.customers; },
   get movements() { return this.state.movements; },
-  get cart()      { return this.state.cart; },
   get settings()  { return this.state.settings; },
+  get stores()    { return this.state.stores; },
+  get roster()    { return this.state.roster; },
+  get programs()  { return this.state.programs; },
+
+  storeCfg(id) { return this.state.stores.find(s => s.id === id); },
+  get currentStore() { return this.storeCfg(this.state.currentStore) || this.state.stores[0]; },
+  setStore(id) {
+    if (!this.storeCfg(id)) return;
+    this.state.currentStore = id;
+    this.save();
+  },
+
+  saveStore(id, patch) {
+    const s = this.storeCfg(id);
+    if (!s) return { ok: false };
+    Object.assign(s, patch);
+    this.save();
+    return { ok: true, store: s };
+  },
 
   user() { return this.state.users.find(u => u.id === this.state.currentUser) || this.state.users[0]; },
 
@@ -85,20 +125,56 @@ const Store = {
     return null;
   },
 
+  variantOf(productId, size) {
+    const p = this.product(productId);
+    return p ? p.variants.find(v => v.size === size) || null : null;
+  },
+
   nextId(kind) {
     this.state.counters[kind] = (this.state.counters[kind] || 0) + 1;
     return this.state.counters[kind];
   },
 
-  /* ---------- Cálculos de stock ---------- */
-  productStock(p) { return p.variants.reduce((s, v) => s + v.stock, 0); },
+  /** Productos que una tienda vende (activos y listados en ella). */
+  productsInStore(storeId) {
+    return this.state.products.filter(p => p.active && p.stores.includes(storeId));
+  },
 
+  sortSizes(list) {
+    const i = s => { const n = SEED.sizeScale.indexOf(s); return n < 0 ? 99 : n; };
+    return list.sort((a, b) => i(a.size || a) - i(b.size || b));
+  },
+
+  /* ---------- Kits ---------- */
+  isKit(p) { return !!p && p.kind === 'kit'; },
+
+  kitParts(p) {
+    return (p.components || [])
+      .map(c => ({ product: this.product(c.productId), qty: c.qty }))
+      .filter(x => x.product);
+  },
+
+  /** Lo que costarían las piezas compradas sueltas. */
+  kitListPrice(p) { return round2(this.kitParts(p).reduce((s, x) => s + x.product.price * x.qty, 0)); },
+  kitSavings(p)   { return Math.max(0, round2(this.kitListPrice(p) - p.price)); },
+  kitCost(p)      { return round2(this.kitParts(p).reduce((s, x) => s + x.product.cost * x.qty, 0)); },
+
+  /* ---------- Cálculos de stock ---------- */
   /** Stock realmente vendible = físico − reservado. */
   available(v) { return Math.max(0, v.stock - (v.reserved || 0)); },
 
+  productStock(p) {
+    if (this.isKit(p)) {
+      // Kits completos que se pueden armar, sin mirar la talla.
+      const parts = this.kitParts(p);
+      if (!parts.length || parts.some(x => !x.product.active)) return 0;
+      return Math.min(...parts.map(x => Math.floor(x.product.variants.reduce((s, v) => s + this.available(v), 0) / x.qty)));
+    }
+    return p.variants.reduce((s, v) => s + v.stock, 0);
+  },
+
   variantStatus(p, v) {
     const a = this.available(v);
-    if (p.madeToOrder) return 'bajo-pedido';
     if (a <= 0) return 'agotado';
     if (a <= (p.minStock || 0)) return 'bajo';
     return 'ok';
@@ -106,48 +182,41 @@ const Store = {
 
   productStatus(p) {
     if (!p.active) return 'inactivo';
-    if (p.madeToOrder) return 'bajo-pedido';
     const total = this.productStock(p);
     if (total <= 0) return 'agotado';
+    if (this.isKit(p)) return 'ok';
     const anyLow = p.variants.some(v => this.available(v) > 0 && this.available(v) <= (p.minStock || 0));
-    if (anyLow) return 'bajo';
-    return 'ok';
+    return anyLow ? 'bajo' : 'ok';
   },
 
   /* ---------- Métricas del dashboard ---------- */
   metrics() {
-    const active = this.state.products.filter(p => p.active);
+    const stocked = this.state.products.filter(p => p.active && !this.isKit(p));
 
     let invValue = 0, invRetail = 0, units = 0;
-    active.forEach(p => {
-      if (p.madeToOrder) return;        // no es stock real en bodega
-      p.variants.forEach(v => {
-        invValue  += v.stock * p.cost;
-        invRetail += v.stock * (p.price + (v.priceDelta || 0));
-        units     += v.stock;
-      });
-    });
+    const lowItems = [], outItems = [];
+    stocked.forEach(p => p.variants.forEach(v => {
+      invValue  += v.stock * p.cost;
+      invRetail += v.stock * p.price;
+      units     += v.stock;
+      const a = this.available(v);
+      if (a <= 0) outItems.push({ p, v });
+      else if (a <= (p.minStock || 0)) lowItems.push({ p, v });
+    }));
 
-    const lowItems = [];
-    const outItems = [];
-    active.forEach(p => {
-      if (p.madeToOrder) return;
-      p.variants.forEach(v => {
-        const a = this.available(v);
-        if (a <= 0) outItems.push({ p, v });
-        else if (a <= (p.minStock || 0)) lowItems.push({ p, v });
-      });
-    });
-
-    const today = '2026-09-19';
+    // Ventana móvil de 30 días: no se vacía al cambiar de mes.
+    const today = this.dayKey(new Date());
+    const since = Date.now() - 30 * 864e5;
     const paid = this.state.orders.filter(o => o.paymentStatus === 'pagado');
-    const salesToday = paid.filter(o => o.date.startsWith(today)).reduce((s, o) => s + o.total, 0);
-    const salesMonth = paid.filter(o => o.date.startsWith('2026-09')).reduce((s, o) => s + o.total, 0);
+    const paid30 = paid.filter(o => new Date(o.date).getTime() >= since);
+    const salesToday = paid.filter(o => this.dayKey(o.date) === today).reduce((s, o) => s + o.total, 0);
+    const sales30 = paid30.reduce((s, o) => s + o.total, 0);
+    const tax30   = paid30.reduce((s, o) => s + (o.tax || 0), 0);
 
     const pending   = this.state.orders.filter(o => ['pendiente', 'procesando'].includes(o.status)).length;
     const completed = this.state.orders.filter(o => o.status === 'completado').length;
 
-    // Ranking por unidades vendidas (solo pedidos pagados)
+    // Ranking por unidades vendidas (solo pedidos pagados). Un kit cuenta como kit.
     const tally = {};
     paid.forEach(o => o.items.forEach(it => {
       if (!tally[it.name]) tally[it.name] = { name: it.name, qty: 0, revenue: 0 };
@@ -156,18 +225,24 @@ const Store = {
     }));
     const topProducts = Object.values(tally).sort((a, b) => b.qty - a.qty).slice(0, 5);
 
-    const ticket = paid.length ? salesMonth / paid.filter(o => o.date.startsWith('2026-09')).length : 0;
+    const byStore = this.state.stores.map(s => {
+      const list = paid.filter(o => o.storeId === s.id);
+      return { store: s, orders: list.length, revenue: list.reduce((x, o) => x + o.total, 0) };
+    });
 
     return {
       invValue, invRetail, units,
       margin: invRetail - invValue,
-      activeCount: active.length,
-      skuCount: active.reduce((s, p) => s + p.variants.length, 0),
+      activeCount: this.state.products.filter(p => p.active).length,
+      kitCount: this.state.products.filter(p => p.active && this.isKit(p)).length,
+      skuCount: stocked.reduce((s, p) => s + p.variants.length, 0),
       lowItems, outItems,
       lowCount: lowItems.length, outCount: outItems.length,
-      salesToday, salesMonth, pending, completed,
-      topProducts, ticket,
-      alertCount: lowItems.length + outItems.length
+      salesToday, sales30, tax30, pending, completed,
+      topProducts, byStore,
+      ticket: paid30.length ? sales30 / paid30.length : 0,
+      alertCount: lowItems.length + outItems.length,
+      deliveriesPending: this.state.roster.filter(e => e.status === 'pendiente').length
     };
   },
 
@@ -176,34 +251,30 @@ const Store = {
      ============================================================ */
   applyMovement({ variantId, type, qty, reason, ref, user }) {
     const found = this.findVariant(variantId);
-    if (!found) return { ok: false, error: 'Variante no encontrada.' };
+    if (!found) return { ok: false, error: I18N.t('err.variantNotFound') };
+    qty = Math.floor(Number(qty) || 0);
+    if (qty <= 0) return { ok: false, error: I18N.t('err.qtyInvalid') };
 
     const { product, variant } = found;
     const before = variant.stock;
-    const delta = type === 'entrada' ? qty : -qty;
-    const after = before + delta;
+    const after = before + (type === 'entrada' ? qty : -qty);
 
     // Regla dura: el inventario nunca queda negativo.
-    if (after < 0 && !product.madeToOrder) {
-      return {
-        ok: false,
-        error: `Stock insuficiente en ${variant.sku}. Disponible: ${before}, solicitado: ${qty}.`
-      };
+    if (after < 0) {
+      return { ok: false, error: I18N.t('err.insufficient', { sku: variant.sku, have: before, want: qty }) };
     }
 
-    variant.stock = Math.max(0, after);
+    variant.stock = after;
 
     const mov = {
       id: 'm' + this.nextId('movement'),
-      date: new Date().toISOString(),
-      sku: variant.sku,
-      product: product.name,
-      variant: `${variant.size} / ${variant.color}`,
+      date: this.nowISO(),
+      productId: product.id, variantId: variant.id,
+      sku: variant.sku, product: product.name, variant: variant.size,
       type, qty,
-      reason: reason || (type === 'entrada' ? 'Ajuste manual' : 'Ajuste manual'),
+      reason: reason || 'fix',
       ref: ref || '—',
-      before,
-      after: variant.stock,
+      before, after,
       user: user || this.user().name
     };
 
@@ -212,153 +283,299 @@ const Store = {
     return { ok: true, movement: mov };
   },
 
-  /* ---------- Carrito ---------- */
-  addToCart(productId, variantId, qty) {
-    const p = this.product(productId);
-    const v = p.variants.find(x => x.id === variantId);
-    if (!p || !v) return { ok: false, error: 'Producto no disponible.' };
+  /* ============================================================
+     CUENTAS DE CLIENTE
+     El comprador se identifica con su correo. De ahí sale la regla
+     "el kit solo es obligatorio en la primera compra".
+     ============================================================ */
+  customerByEmail(email) {
+    const e = String(email || '').trim().toLowerCase();
+    if (!e) return null;
+    return this.state.customers.find(c => c.email.toLowerCase() === e) || null;
+  },
 
-    const existing = this.state.cart.find(l => l.variantId === variantId);
-    const inCart = existing ? existing.qty : 0;
-    const avail = this.available(v);
+  get session() {
+    return this.state.session ? this.state.customers.find(c => c.id === this.state.session) || null : null;
+  },
 
-    // Validación frente al stock real, contando lo ya reservado en el carrito.
-    if (!p.madeToOrder && inCart + qty > avail) {
-      return {
-        ok: false,
-        error: avail === 0
-          ? 'Esta variante está agotada.'
-          : `Solo quedan ${avail} unidades y ya tienes ${inCart} en el carrito.`
+  signIn({ email, name, phone }) {
+    email = String(email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: I18N.t('err.emailInvalid') };
+
+    let c = this.customerByEmail(email);
+    let created = false;
+    if (!c) {
+      if (!String(name || '').trim()) return { ok: false, needName: true, error: I18N.t('err.nameRequired') };
+      c = {
+        id: 'c' + this.nextId('customer'),
+        name: name.trim(), email, phone: (phone || '').trim() || '—',
+        city: '', orders: 0, spent: 0, kitGrants: [],
+        since: this.nowISO().slice(0, 10)
       };
+      this.state.customers.unshift(c);
+      created = true;
+    } else {
+      if (name && name.trim()) c.name = name.trim();
+      if (phone && phone.trim()) c.phone = phone.trim();
+    }
+    this.state.session = c.id;
+    this.save();
+    return { ok: true, customer: c, created };
+  },
+
+  signOut() { this.state.session = null; this.save(); },
+
+  /** ¿De dónde le viene el kit a este cliente en esta tienda? null = no lo tiene. */
+  kitSource(customer, storeId) {
+    if (!customer) return null;
+    const order = this.state.orders.find(o =>
+      o.customerId === customer.id && o.storeId === storeId && o.status !== 'cancelado' &&
+      o.items.some(i => i.kind === 'kit'));
+    if (order) return { type: 'order', ref: order.number, date: order.date };
+
+    const entry = this.state.roster.find(e => {
+      if (e.status !== 'entregado' || (e.email || '').toLowerCase() !== customer.email.toLowerCase()) return false;
+      const prog = this.program(e.program);
+      return prog && prog.grantsKit && prog.storeId === storeId;
+    });
+    if (entry) return { type: 'delivery', ref: entry.ref, date: entry.deliveredAt };
+
+    if ((customer.kitGrants || []).includes(storeId)) return { type: 'grant', ref: '—' };
+    return null;
+  },
+
+  hasKit(customer, storeId) { return !!this.kitSource(customer, storeId); },
+
+  setKitGrant(customerId, storeId, on) {
+    const c = this.state.customers.find(x => x.id === customerId);
+    if (!c) return { ok: false };
+    c.kitGrants = (c.kitGrants || []).filter(s => s !== storeId);
+    if (on) c.kitGrants.push(storeId);
+    this.save();
+    return { ok: true };
+  },
+
+  /* ============================================================
+     CARRITO — uno por tienda
+     ============================================================ */
+  get cart() {
+    const id = this.state.currentStore;
+    if (!this.state.carts[id]) this.state.carts[id] = [];
+    return this.state.carts[id];
+  },
+
+  /** Unidades de inventario que consume una línea: [[variantId, unidades], …] */
+  lineUnits(line) {
+    if (line.kind === 'kit') return line.components.map(c => [c.variantId, c.qty * line.qty]);
+    return [[line.variantId, line.qty]];
+  },
+
+  /** Unidades ya comprometidas en el carrito, por variante. */
+  demand(exceptLineId) {
+    const d = {};
+    this.cart.forEach(l => {
+      if (l.lineId === exceptLineId) return;
+      this.lineUnits(l).forEach(([vid, n]) => { d[vid] = (d[vid] || 0) + n; });
+    });
+    return d;
+  },
+
+  /** Comprueba contra el stock real, contando lo que ya hay en el carrito. */
+  _fits(pairs, exceptLineId) {
+    const d = this.demand(exceptLineId);
+    const want = {};
+    pairs.forEach(([vid, n]) => { want[vid] = (want[vid] || 0) + n; });
+
+    for (const vid of Object.keys(want)) {
+      const f = this.findVariant(vid);
+      if (!f) return I18N.t('err.notAvailable');
+      const avail = this.available(f.variant);
+      const inCart = d[vid] || 0;
+      if (inCart + want[vid] > avail) {
+        const vars = { name: f.product.name, size: UI.sizeLabel(f.variant.size), n: avail, inCart };
+        if (avail <= 0) return I18N.t('err.soldOut', vars);
+        return I18N.t(inCart ? 'err.onlyLeftInCart' : 'err.onlyLeft', vars);
+      }
+    }
+    return null;
+  },
+
+  addItem(productId, variantId, qty) {
+    const p = this.product(productId);
+    const v = p && p.variants.find(x => x.id === variantId);
+    if (!p || !v || !p.active || !p.stores.includes(this.state.currentStore)) {
+      return { ok: false, error: I18N.t('err.notAvailable') };
     }
 
+    const err = this._fits([[variantId, qty]]);
+    if (err) return { ok: false, error: err };
+
+    const existing = this.cart.find(l => l.kind === 'item' && l.variantId === variantId);
     if (existing) existing.qty += qty;
-    else this.state.cart.push({
+    else this.cart.push({
+      lineId: 'L' + this.nextId('line'), kind: 'item',
       productId, variantId, qty,
-      name: p.name,
-      sku: v.sku,
-      variant: `${v.size} / ${v.color}`,
-      size: v.size, color: v.color, colorHex: v.colorHex,
-      price: p.price + (v.priceDelta || 0)
+      name: p.name, sku: v.sku, size: v.size, price: p.price
     });
 
     this.save();
     return { ok: true };
   },
 
-  updateCartQty(variantId, qty) {
-    const line = this.state.cart.find(l => l.variantId === variantId);
-    if (!line) return { ok: false };
-    if (qty <= 0) return this.removeFromCart(variantId);
-
-    const f = this.findVariant(variantId);
-    if (f && !f.product.madeToOrder && qty > this.available(f.variant)) {
-      return { ok: false, error: `Solo hay ${this.available(f.variant)} unidades disponibles.` };
+  /** selections: [{ productId, variantId }] — una talla por cada pieza del kit. */
+  addKit(productId, selections, qty, player) {
+    const p = this.product(productId);
+    if (!this.isKit(p) || !p.active || !p.stores.includes(this.state.currentStore)) {
+      return { ok: false, error: I18N.t('err.notAvailable') };
     }
+
+    const comps = [];
+    for (const part of this.kitParts(p)) {
+      const sel = (selections || []).find(s => s.productId === part.product.id);
+      const v = sel && part.product.variants.find(x => x.id === sel.variantId);
+      if (!part.product.active) return { ok: false, error: I18N.t('err.notAvailable') };
+      if (!v) return { ok: false, error: I18N.t('err.kitPickSizes') };
+      comps.push({ productId: part.product.id, variantId: v.id, qty: part.qty, name: part.product.name, size: v.size, sku: v.sku });
+    }
+
+    qty = qty || 1;
+    const err = this._fits(comps.map(c => [c.variantId, c.qty * qty]));
+    if (err) return { ok: false, error: err };
+
+    // Cada kit es una línea propia: suele ser un jugador distinto.
+    this.cart.push({
+      lineId: 'L' + this.nextId('line'), kind: 'kit',
+      productId, qty, name: p.name, sku: p.sku,
+      price: p.price, listPrice: this.kitListPrice(p),
+      player: (player || '').trim(), components: comps
+    });
+
+    this.save();
+    return { ok: true };
+  },
+
+  updateLineQty(lineId, qty) {
+    const line = this.cart.find(l => l.lineId === lineId);
+    if (!line) return { ok: false };
+    if (qty <= 0) return this.removeLine(lineId);
+
+    const err = this._fits(this.lineUnits(Object.assign({}, line, { qty })), lineId);
+    if (err) return { ok: false, error: err };
     line.qty = qty;
     this.save();
     return { ok: true };
   },
 
-  removeFromCart(variantId) {
-    this.state.cart = this.state.cart.filter(l => l.variantId !== variantId);
+  removeLine(lineId) {
+    this.state.carts[this.state.currentStore] = this.cart.filter(l => l.lineId !== lineId);
     this.save();
     return { ok: true };
   },
 
-  clearCart() { this.state.cart = []; this.save(); },
+  clearCart() { this.state.carts[this.state.currentStore] = []; this.save(); },
 
-  cartTotals() {
-    const subtotal = this.state.cart.reduce((s, l) => s + l.price * l.qty, 0);
-    const s = this.settings;
-    const shipping = subtotal === 0 ? 0 : (subtotal >= s.freeShippingOver ? 0 : s.shippingFlat);
-    const tax = subtotal * (s.taxRate || 0);
-    return { subtotal, shipping, tax, total: subtotal + shipping + tax };
+  cartCount() { return this.cart.reduce((s, l) => s + l.qty, 0); },
+
+  /**
+   * Regla de negocio: en una tienda con kit obligatorio, las piezas
+   * sueltas solo se venden a quien ya tiene el kit o lo lleva en este
+   * mismo pedido. Sin esto, muchos comprarían solo la camiseta.
+   */
+  kitGate(email) {
+    const st = this.currentStore;
+    if (!st.kitRequired) return { required: false, ok: true };
+    if (!this.productsInStore(st.id).some(p => this.isKit(p))) return { required: false, ok: true };
+    if (this.cart.some(l => l.kind === 'kit')) return { required: true, ok: true, via: 'cart' };
+
+    const c = email ? this.customerByEmail(email) : this.session;
+    const src = this.kitSource(c, st.id);
+    if (src) return { required: true, ok: true, via: 'owned', source: src };
+    return { required: true, ok: false, known: !!c };
   },
 
-  cartCount() { return this.state.cart.reduce((s, l) => s + l.qty, 0); },
+  cartTotals(fulfillment) {
+    const st = this.currentStore;
+    const subtotal = round2(this.cart.reduce((s, l) => s + l.price * l.qty, 0));
+    const list = round2(this.cart.reduce((s, l) => s + (l.kind === 'kit' ? (l.listPrice || l.price) : l.price) * l.qty, 0));
+    const shipping = (subtotal > 0 && fulfillment === 'shipping') ? round2(st.shippingFlat) : 0;
+    const tax = round2(subtotal * (st.taxRate || 0));
+    return {
+      subtotal, shipping, tax,
+      taxRate: st.taxRate || 0,
+      savings: Math.max(0, round2(list - subtotal)),
+      total: round2(subtotal + shipping + tax)
+    };
+  },
 
   /* ============================================================
      CHECKOUT — simula el webhook de pago confirmado.
-     Replica el orden real de un backend de producción:
-     validar stock → crear pedido → descontar → registrar movimientos.
+     Mismo orden que un backend real:
+     regla del kit → validar stock → crear pedido → descontar → asentar.
      ============================================================ */
-  placeOrder(customerData) {
-    if (!this.state.cart.length) return { ok: false, error: 'El carrito está vacío.' };
+  placeOrder(data) {
+    const cart = this.cart;
+    const st = this.currentStore;
+    if (!cart.length) return { ok: false, error: I18N.t('err.cartEmpty') };
 
-    // 1) Revalidación atómica ANTES de cobrar. Evita vender lo que ya no existe
-    //    (otro cliente pudo comprarlo mientras este navegaba).
-    for (const line of this.state.cart) {
-      const f = this.findVariant(line.variantId);
-      if (!f) return { ok: false, error: `El producto ${line.name} ya no existe.` };
-      if (!f.product.madeToOrder && line.qty > f.variant.stock) {
-        return {
-          ok: false,
-          error: `Stock insuficiente de ${line.name} (${line.variant}). Disponible: ${f.variant.stock}.`
-        };
+    const fulfillment = data.fulfillment === 'shipping' ? 'shipping' : 'pickup';
+
+    // 1) Regla del kit, evaluada contra el correo con el que se compra.
+    const gate = this.kitGate(data.email);
+    if (!gate.ok) return { ok: false, code: 'kit', error: I18N.t('err.kitRequired') };
+
+    // 2) Revalidación de stock ANTES de cobrar: otro cliente pudo llevarse
+    //    las últimas unidades mientras este llenaba el formulario.
+    const need = {};
+    cart.forEach(l => this.lineUnits(l).forEach(([vid, n]) => { need[vid] = (need[vid] || 0) + n; }));
+    for (const vid of Object.keys(need)) {
+      const f = this.findVariant(vid);
+      if (!f) return { ok: false, error: I18N.t('err.notAvailable') };
+      if (need[vid] > f.variant.stock) {
+        return { ok: false, error: I18N.t('err.stockChanged', { name: f.product.name, size: UI.sizeLabel(f.variant.size), n: f.variant.stock }) };
       }
     }
 
-    // 2) Cliente: reutiliza si el email ya existe, si no lo crea.
-    let customer = this.state.customers.find(
-      c => c.email.toLowerCase() === (customerData.email || '').toLowerCase()
-    );
-    if (!customer) {
-      customer = {
-        id: 'c' + this.nextId('customer'),
-        name: customerData.name,
-        email: customerData.email,
-        phone: customerData.phone || '—',
-        city: customerData.city || 'Miami, FL',
-        type: 'Particular',
-        orders: 0, spent: 0,
-        since: new Date().toISOString().slice(0, 10)
-      };
-      this.state.customers.unshift(customer);
+    // 3) Cliente: se reutiliza si el correo ya existe; si no, se crea.
+    const acc = this.signIn({ email: data.email, name: data.name, phone: data.phone });
+    if (!acc.ok) return { ok: false, error: acc.error };
+    const customer = acc.customer;
+    if (fulfillment === 'shipping' && data.address) {
+      customer.city = [data.address.city, data.address.state].filter(Boolean).join(', ');
     }
 
-    // 3) Pedido
-    const totals = this.cartTotals();
-    const orderNumber = 'SC-' + this.nextId('order');
+    // 4) Pedido
+    const totals = this.cartTotals(fulfillment);
+    const number = 'SC-' + this.nextId('order');
     const order = {
-      id: 'o' + Date.now(),
-      number: orderNumber,
-      customerId: customer.id,
-      date: new Date().toISOString(),
-      status: 'pendiente',
-      paymentStatus: 'pagado',
-      paymentMethod: customerData.paymentMethod || 'Stripe · Visa ···4242',
-      items: this.state.cart.map(l => ({
-        productId: l.productId, variantId: l.variantId, sku: l.sku,
-        name: l.name, variant: l.variant, qty: l.qty, price: l.price
-      })),
-      subtotal: totals.subtotal,
-      shipping: totals.shipping,
-      tax: totals.tax,
-      total: totals.total
+      id: 'o' + this.state.counters.order,
+      number, storeId: st.id, customerId: customer.id,
+      date: this.nowISO(),
+      status: 'pendiente', paymentStatus: 'pagado',
+      paymentMethod: data.paymentMethod || 'Stripe · Visa ···4242',
+      fulfillment,
+      address: fulfillment === 'shipping' ? (data.address || null) : null,
+      items: clone(cart).map(l => { delete l.lineId; return l; }),
+      subtotal: totals.subtotal, savings: totals.savings,
+      shipping: totals.shipping, tax: totals.tax, taxRate: totals.taxRate, total: totals.total
     };
 
-    // 4) Descuento de inventario + asiento en el libro de movimientos
+    // 5) Descuento de inventario + asiento en el libro. Un kit descuenta cada pieza.
     const trace = [];
-    this.state.cart.forEach(line => {
+    cart.forEach(l => this.lineUnits(l).forEach(([vid, n]) => {
       const r = this.applyMovement({
-        variantId: line.variantId,
-        type: 'salida',
-        qty: line.qty,
-        reason: 'Venta',
-        ref: orderNumber,
-        user: 'Sistema'
+        variantId: vid, type: 'salida', qty: n,
+        reason: l.kind === 'kit' ? 'sale_kit' : 'sale',
+        ref: number, user: 'Sistema'
       });
       if (r.ok) trace.push(r.movement);
-    });
+    }));
 
     this.state.orders.unshift(order);
     customer.orders += 1;
-    customer.spent += order.total;
+    customer.spent = round2(customer.spent + order.total);
 
     this.clearCart();
     this.save();
-
     return { ok: true, order, customer, trace };
   },
 
@@ -369,77 +586,235 @@ const Store = {
     const prev = o.status;
     o.status = status;
 
-    // Cancelar un pedido pagado devuelve la mercancía al inventario.
-    if (status === 'cancelado' && prev !== 'cancelado' && o.paymentStatus === 'pagado') {
+    // Cancelar un pedido pagado devuelve la mercancía al inventario, pieza por pieza.
+    const restock = status === 'cancelado' && prev !== 'cancelado' && o.paymentStatus === 'pagado';
+    if (restock) {
       o.paymentStatus = 'reembolsado';
-      o.items.forEach(it => {
-        const f = it.variantId ? this.findVariant(it.variantId) : this.variantBySku(it.sku);
-        if (f) {
-          this.applyMovement({
-            variantId: f.variant.id,
-            type: 'entrada',
-            qty: it.qty,
-            reason: 'Devolución de cliente',
-            ref: o.number,
-            user: this.user().name
-          });
-        }
-      });
+      o.items.forEach(it => this.lineUnits(it).forEach(([vid, n]) => {
+        this.applyMovement({ variantId: vid, type: 'entrada', qty: n, reason: 'return', ref: o.number });
+      }));
       const c = this.state.customers.find(x => x.id === o.customerId);
-      if (c) { c.spent = Math.max(0, c.spent - o.total); c.orders = Math.max(0, c.orders - 1); }
+      if (c) { c.spent = Math.max(0, round2(c.spent - o.total)); c.orders = Math.max(0, c.orders - 1); }
     }
 
     this.save();
-    return { ok: true, order: o, restocked: status === 'cancelado' && prev !== 'cancelado' };
+    return { ok: true, order: o, restocked: restock };
   },
 
-  /* ---------- CRUD de productos ---------- */
+  /* ============================================================
+     PRODUCTOS
+     data.sizes = [{ size, stock }] para piezas; data.components para kits.
+     ============================================================ */
   saveProduct(data) {
+    const sizes = data.sizes || [];
+    const fields = Object.assign({}, data);
+    delete fields.sizes;
+    delete fields.id;
+
+    const skuFor = (base, size) => base + (size === 'U' ? '' : '-' + size);
+    const isKit = fields.kind === 'kit';
+
     if (data.id) {
       const p = this.product(data.id);
-      if (!p) return { ok: false, error: 'Producto no encontrado.' };
-      Object.assign(p, data);
+      if (!p) return { ok: false, error: I18N.t('err.notAvailable') };
+      Object.assign(p, fields);
+
+      if (isKit) {
+        p.variants = [];
+      } else {
+        delete p.components;
+        const bySize = {};
+        p.variants.forEach(v => { bySize[v.size] = v; });
+        const next = sizes.map(({ size }) => {
+          const v = bySize[size] || { id: p.id + '-' + size, size, stock: 0, reserved: 0 };
+          v.sku = skuFor(p.sku, size);
+          return v;
+        });
+        // Una talla con existencias no se puede quitar: el inventario no desaparece.
+        p.variants.forEach(v => { if (!next.includes(v) && v.stock > 0) next.push(v); });
+        p.variants = this.sortSizes(next);
+
+        // Los cambios manuales de stock quedan asentados como conteo.
+        sizes.forEach(({ size, stock }) => {
+          const v = p.variants.find(x => x.size === size);
+          const diff = Math.max(0, Math.floor(stock || 0)) - v.stock;
+          if (diff) this.applyMovement({
+            variantId: v.id, type: diff > 0 ? 'entrada' : 'salida',
+            qty: Math.abs(diff), reason: 'count', ref: 'EDIT-' + p.sku
+          });
+        });
+      }
       this.save();
       return { ok: true, product: p, created: false };
     }
 
-    const p = {
-      id: 'p' + this.nextId('product'),
-      ...data,
-      variants: data.variants || []
-    };
+    const p = Object.assign({ id: 'p' + this.nextId('product'), images: [], variants: [] }, fields);
+    if (!isKit) {
+      p.variants = this.sortSizes(sizes.map(({ size }) => ({
+        id: p.id + '-' + size, sku: skuFor(p.sku, size), size, stock: 0, reserved: 0
+      })));
+    }
     this.state.products.push(p);
 
-    // El stock inicial también deja rastro: entrada por alta de producto.
-    p.variants.forEach(v => {
-      if (v.stock > 0) {
-        const opening = v.stock;
-        v.stock = 0;
-        this.applyMovement({
-          variantId: v.id, type: 'entrada', qty: opening,
-          reason: 'Producción terminada', ref: 'ALTA-' + p.sku
-        });
-      }
+    // El stock inicial también deja rastro.
+    sizes.forEach(({ size, stock }) => {
+      const q = Math.max(0, Math.floor(stock || 0));
+      if (!isKit && q > 0) this.applyMovement({
+        variantId: p.id + '-' + size, type: 'entrada', qty: q, reason: 'initial', ref: 'ALTA-' + p.sku
+      });
     });
 
     this.save();
     return { ok: true, product: p, created: true };
   },
 
-  deleteProduct(id) {
+  toggleProduct(id) {
     const p = this.product(id);
     if (!p) return { ok: false };
     // Desactivar, no borrar: el histórico de ventas debe seguir siendo legible.
-    p.active = false;
+    p.active = !p.active;
+    this.save();
+    return { ok: true, active: p.active };
+  },
+
+  /** Kits activos que dejarían de poder venderse si se desactiva esta pieza. */
+  kitsUsing(productId) {
+    return this.state.products.filter(p => this.isKit(p) && (p.components || []).some(c => c.productId === productId));
+  },
+
+  /* ============================================================
+     ENTREGAS — salidas de inventario que no son venta
+     (uniforme de academia según PlayMetrics, camiseta de la clínica)
+     ============================================================ */
+  program(id) { return this.state.programs.find(p => p.id === id); },
+  rosterEntry(id) { return this.state.roster.find(e => e.id === id); },
+
+  normSize(raw) {
+    const k = String(raw || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const alias = {
+      'youth xs': 'YXS', 'youth x-small': 'YXS', 'yxs': 'YXS',
+      'youth small': 'YS', 'youth s': 'YS', 'ys': 'YS',
+      'youth medium': 'YM', 'youth m': 'YM', 'ym': 'YM',
+      'youth large': 'YL', 'youth l': 'YL', 'yl': 'YL',
+      'adult small': 'S', 'adult s': 'S', 'small': 'S', 's': 'S',
+      'adult medium': 'M', 'adult m': 'M', 'medium': 'M', 'm': 'M',
+      'adult large': 'L', 'adult l': 'L', 'large': 'L', 'l': 'L',
+      'adult xl': 'XL', 'xl': 'XL', 'x-large': 'XL'
+    };
+    return alias[k] || '';
+  },
+
+  /** Talla que le corresponde a una pieza según la ficha del jugador. */
+  sizeFor(product, entry) {
+    const sizes = product.variants.map(v => v.size);
+    if (sizes.length === 1 && sizes[0] === 'U') return 'U';
+    if (product.kind === 'socks') {
+      const s = entry.sockSize || SEED.sockFor[entry.size] || '';
+      return sizes.includes(s) ? s : '';
+    }
+    return sizes.includes(entry.size) ? entry.size : '';
+  },
+
+  /** Qué piezas y tallas saldrían del inventario para un jugador, y si alcanzan. */
+  deliveryPlan(entryId, overrides) {
+    const entry = this.rosterEntry(entryId);
+    const prog = entry && this.program(entry.program);
+    if (!entry || !prog) return null;
+    const pkg = this.product(prog.packages[entry.role] || prog.packages.player);
+    if (!pkg) return null;
+
+    const parts = this.isKit(pkg) ? this.kitParts(pkg) : [{ product: pkg, qty: 1 }];
+    const lines = parts.map(({ product, qty }) => {
+      const size = (overrides && overrides[product.id]) || this.sizeFor(product, entry);
+      const variant = size ? product.variants.find(v => v.size === size) || null : null;
+      const available = variant ? this.available(variant) : 0;
+      return { product, qty, size, variant, available, ok: !!variant && available >= qty };
+    });
+    return { entry, program: prog, package: pkg, lines, ok: lines.every(l => l.ok) };
+  },
+
+  deliver(entryId, overrides) {
+    const plan = this.deliveryPlan(entryId, overrides);
+    if (!plan) return { ok: false, error: I18N.t('err.notAvailable') };
+    if (plan.entry.status === 'entregado') return { ok: false, error: I18N.t('err.alreadyDelivered') };
+
+    const bad = plan.lines.find(l => !l.ok);
+    if (bad) {
+      return {
+        ok: false,
+        error: bad.variant
+          ? I18N.t('err.deliveryNoStock', { name: bad.product.name, size: UI.sizeLabel(bad.size), n: bad.available })
+          : I18N.t('err.deliveryNoSize', { name: bad.product.name })
+      };
+    }
+
+    const ref = 'ENT-' + String(this.nextId('delivery')).padStart(4, '0');
+    const items = [];
+    plan.lines.forEach(l => {
+      const r = this.applyMovement({
+        variantId: l.variant.id, type: 'salida', qty: l.qty,
+        reason: 'delivery_' + plan.program.id, ref
+      });
+      if (r.ok) items.push({ variantId: l.variant.id, sku: l.variant.sku, name: l.product.name, size: l.size, qty: l.qty });
+    });
+
+    Object.assign(plan.entry, {
+      status: 'entregado', ref, items,
+      deliveredAt: this.nowISO(), deliveredBy: this.user().name
+    });
+    this.save();
+    return { ok: true, entry: plan.entry, ref };
+  },
+
+  /** Deshace una entrega registrada por error: las piezas vuelven al inventario. */
+  undoDelivery(entryId) {
+    const e = this.rosterEntry(entryId);
+    if (!e || e.status !== 'entregado') return { ok: false };
+    (e.items || []).forEach(it => this.applyMovement({
+      variantId: it.variantId, type: 'entrada', qty: it.qty, reason: 'delivery_undo', ref: e.ref
+    }));
+    Object.assign(e, { status: 'pendiente', items: [], deliveredAt: null, deliveredBy: null });
     this.save();
     return { ok: true };
   },
 
-  toggleProduct(id) {
-    const p = this.product(id);
-    if (!p) return { ok: false };
-    p.active = !p.active;
+  updateRoster(id, patch) {
+    const e = this.rosterEntry(id);
+    if (!e) return { ok: false };
+    Object.assign(e, patch);
     this.save();
-    return { ok: true, active: p.active };
+    return { ok: true, entry: e };
+  },
+
+  /**
+   * Importa una lista exportada de PlayMetrics (CSV).
+   * Columnas: jugador, correo del acudiente, equipo, posición, talla, talla de medias.
+   */
+  importRoster(text, programId) {
+    const prog = this.program(programId);
+    if (!prog) return { ok: false, added: 0, skipped: 0 };
+
+    const rows = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    let added = 0, skipped = 0;
+    rows.forEach((line, i) => {
+      const c = line.split(/[,;\t]/).map(x => x.trim().replace(/^"|"$/g, ''));
+      if (i === 0 && /player|jugador|name|nombre/i.test(c[0])) return;   // encabezado
+      if (!c[0]) { skipped++; return; }
+      const dupe = this.state.roster.some(e =>
+        e.program === programId && e.player.toLowerCase() === c[0].toLowerCase() &&
+        (e.email || '').toLowerCase() === (c[1] || '').toLowerCase());
+      if (dupe) { skipped++; return; }
+
+      this.state.roster.push({
+        id: 'r' + this.nextId('roster'), program: programId,
+        player: c[0], email: c[1] || '', team: c[2] || '',
+        role: /^(g|port|arq)/i.test(c[3] || '') ? 'goalkeeper' : 'player',
+        size: this.normSize(c[4]), sockSize: this.normSize(c[5]),
+        status: 'pendiente'
+      });
+      added++;
+    });
+    this.save();
+    return { ok: true, added, skipped };
   }
 };

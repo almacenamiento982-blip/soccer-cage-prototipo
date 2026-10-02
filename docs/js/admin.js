@@ -1,19 +1,20 @@
 /* ============================================================
    SOCCER CAGE — Panel administrativo
-   Dashboard · Inventario · Productos · Movimientos · Pedidos
-   Clientes · Alertas · Reportes · Configuración
+   Dashboard · Inventario · Productos · Movimientos · Entregas
+   Pedidos · Clientes · Tiendas · Alertas · Reportes · Configuración
    ============================================================ */
 
 const Admin = {
   current: 'dashboard',
   f: {
-    inv:  { q: '', status: 'todos', cat: 'todos' },
-    prod: { q: '', cat: 'todos', active: 'todos' },
-    mov:  { q: '', type: 'todos', reason: 'todos' },
-    ord:  { q: '', status: 'todos' },
-    cust: { q: '' }
+    inv:  { q: '', raw: '', status: 'todos', store: 'todos', kind: 'todos' },
+    prod: { q: '', raw: '', store: 'todos', type: 'todos', active: 'todos' },
+    mov:  { q: '', raw: '', type: 'todos', reason: 'todos' },
+    ord:  { q: '', raw: '', status: 'todos', store: 'todos' },
+    cust: { q: '', raw: '' },
+    del:  { q: '', raw: '', program: 'todos', status: 'todos' }
   },
-  draftVariants: [],
+  draft: null,
 
   init() {
     document.querySelectorAll('.side-link').forEach(btn => {
@@ -32,7 +33,7 @@ const Admin = {
     document.querySelectorAll('.page').forEach(p =>
       p.classList.toggle('active', p.id === 'page-' + page));
     this.renderPage(page);
-    document.querySelector('.content').scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
   },
 
   refresh() {
@@ -42,21 +43,21 @@ const Admin = {
 
   updateBadge() {
     const m = Store.metrics();
-    const b = document.getElementById('alertBadge');
-    b.textContent = m.alertCount;
-    b.style.display = m.alertCount ? 'grid' : 'none';
+    const set = (id, n) => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.textContent = n;
+      b.style.display = n ? 'grid' : 'none';
+    };
+    set('alertBadge', m.alertCount);
+    set('deliveryBadge', m.deliveriesPending);
   },
 
   renderPage(page) {
     const el = document.getElementById('page-' + page);
-    if (!el) return;
-    const fn = {
-      dashboard: 'dashboard', inventory: 'inventory', products: 'products',
-      movements: 'movements', orders: 'orders', customers: 'customers',
-      alerts: 'alerts', reports: 'reports', settings: 'settings'
-    }[page];
-    el.innerHTML = this[fn + 'HTML']();
-    if (this[fn + 'Bind']) this[fn + 'Bind']();
+    if (!el || !this[page + 'HTML']) return;
+    el.innerHTML = this[page + 'HTML']();
+    if (this[page + 'Bind']) this[page + 'Bind']();
     this.updateBadge();
   },
 
@@ -67,6 +68,50 @@ const Admin = {
     </div>`;
   },
 
+  searchBox(id, f, ph) {
+    return `<div class="search-box">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input class="input" id="${id}" placeholder="${ph}" value="${UI.esc(f.raw)}">
+    </div>`;
+  },
+
+  /** Búsqueda en vivo: repinta la página y devuelve el cursor a su sitio. */
+  bindSearch(id, f, page) {
+    const q = document.getElementById(id);
+    if (!q) return;
+    q.oninput = () => {
+      f.raw = q.value;
+      f.q = q.value.trim().toLowerCase();
+      const pos = q.selectionStart;
+      this.renderPage(page);
+      const nq = document.getElementById(id);
+      nq.focus();
+      nq.setSelectionRange(pos, pos);
+    };
+  },
+
+  bindSelect(id, f, key, page) {
+    const el = document.getElementById(id);
+    if (el) el.onchange = e => { f[key] = e.target.value; this.renderPage(page); };
+  },
+
+  storeOptions(sel, extra) {
+    return `<option value="todos">${I18N.t('adm.common.allStores')}</option>` +
+      Store.stores.map(s => `<option value="${s.id}"${sel === s.id ? ' selected' : ''}>${UI.esc(s.name)}</option>`).join('') +
+      (extra ? `
+        <option value="shared"${sel === 'shared' ? ' selected' : ''}>${I18N.t('adm.common.sharedStores')}</option>
+        <option value="internal"${sel === 'internal' ? ' selected' : ''}>${I18N.t('adm.common.internalOnly')}</option>` : '');
+  },
+
+  matchStore(p, f) {
+    if (f === 'todos') return true;
+    if (f === 'internal') return !p.stores.length;
+    if (f === 'shared') return p.stores.length > 1;
+    return p.stores.includes(f);
+  },
+
+  customerOf(o) { return Store.customers.find(x => x.id === o.customerId); },
+
   /* ============================================================
      DASHBOARD
      ============================================================ */
@@ -75,13 +120,21 @@ const Admin = {
     const recent = Store.movements.slice(0, 8);
     const pending = Store.orders.filter(o => ['pendiente', 'procesando'].includes(o.status)).slice(0, 5);
     const maxQty = Math.max(1, ...m.topProducts.map(p => p.qty));
+    const maxStore = Math.max(1, ...m.byStore.map(b => b.revenue));
+    const activeStores = Store.stores.filter(s => s.active).length;
+    const withKit = Store.customers.filter(c => Store.stores.some(s => Store.hasKit(c, s.id))).length;
 
     return this.head(
       I18N.t('adm.dashboard.title'),
-      I18N.t('adm.dashboard.sub', { date: UI.date('2026-09-19'), company: UI.esc(Store.settings.company) }),
+      I18N.t('adm.dashboard.sub', { date: UI.date(new Date().toISOString()), company: UI.esc(Store.settings.company) }),
       `<button class="btn btn-sm" id="dashReset">${I18N.t('adm.dashboard.resetDemo')}</button>
        <button class="btn btn-primary btn-sm" id="dashNew">${I18N.t('adm.dashboard.newProduct')}</button>`
     ) + `
+
+    <div class="demo-banner">
+      ${UI.infoIcon()}
+      <span>${I18N.t('adm.dashboard.dataNote', { date: typeof CATALOG !== 'undefined' ? UI.date(CATALOG.importedAt) : '—' })}</span>
+    </div>
 
     <div class="kpi-grid">
       <div class="kpi kpi-principal">
@@ -90,14 +143,14 @@ const Admin = {
         <div class="kpi-foot">${I18N.t('adm.dashboard.invValueFoot', { units: UI.num(m.units) })}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">${I18N.t('adm.dashboard.invRetail')}</div>
-        <div class="kpi-value">${UI.money0(m.invRetail)}</div>
-        <div class="kpi-foot">${I18N.t('adm.dashboard.marginFoot', { margin: `<span class="delta up">${UI.money0(m.margin)}</span>` })}</div>
+        <div class="kpi-label">${I18N.t('adm.dashboard.sales30')}</div>
+        <div class="kpi-value">${UI.money0(m.sales30)}</div>
+        <div class="kpi-foot">${I18N.t('adm.dashboard.salesTodayFoot', { today: `<strong>${UI.money0(m.salesToday)}</strong>`, ticket: UI.money0(m.ticket) })}</div>
       </div>
       <div class="kpi">
-        <div class="kpi-label">${I18N.t('adm.dashboard.salesMonth')}</div>
-        <div class="kpi-value">${UI.money0(m.salesMonth)}</div>
-        <div class="kpi-foot">${I18N.t('adm.dashboard.salesTodayFoot', { today: `<strong>${UI.money0(m.salesToday)}</strong>`, ticket: UI.money0(m.ticket) })}</div>
+        <div class="kpi-label">${I18N.t('adm.dashboard.stores')}</div>
+        <div class="kpi-value">${activeStores}<span class="kpi-of">/${Store.stores.length}</span></div>
+        <div class="kpi-foot">${I18N.t('adm.dashboard.storesFoot')}</div>
       </div>
       <div class="kpi ${m.outCount ? 'kpi-critico' : ''}">
         <div class="kpi-label">${I18N.t('adm.dashboard.needsAttention')}</div>
@@ -107,10 +160,10 @@ const Admin = {
           <span style="color:var(--danger-600);font-weight:600">${I18N.t('adm.dashboard.outStock', { n: m.outCount })}</span>
         </div>
       </div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.activeProducts')}</div><div class="kpi-value">${m.activeCount}</div><div class="kpi-foot">${I18N.t('adm.dashboard.skuCount', { n: m.skuCount })}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.activeProducts')}</div><div class="kpi-value">${m.activeCount}</div><div class="kpi-foot">${I18N.t('adm.dashboard.skuCount', { n: m.skuCount, kits: m.kitCount })}</div></div>
       <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.pendingOrders')}</div><div class="kpi-value">${m.pending}</div><div class="kpi-foot">${I18N.t('adm.dashboard.pendingFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.completedOrders')}</div><div class="kpi-value">${m.completed}</div><div class="kpi-foot">${I18N.t('adm.dashboard.completedFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.customers')}</div><div class="kpi-value">${Store.customers.length}</div><div class="kpi-foot">${I18N.t('adm.dashboard.customersFoot')}</div></div>
+      <div class="kpi ${m.deliveriesPending ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.dashboard.deliveries')}</div><div class="kpi-value">${m.deliveriesPending}</div><div class="kpi-foot">${I18N.t('adm.dashboard.deliveriesFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.customers')}</div><div class="kpi-value">${Store.customers.length}</div><div class="kpi-foot">${I18N.t('adm.dashboard.customersFoot', { n: withKit })}</div></div>
     </div>
 
     ${m.outCount ? `
@@ -136,8 +189,8 @@ const Admin = {
               <tbody>
                 ${recent.map(mv => `
                   <tr>
-                    <td><div class="cell-main">${UI.esc(mv.product)}</div><div class="cell-sub mono">${UI.esc(mv.variant)} · ${UI.esc(mv.sku)}</div></td>
-                    <td><div>${UI.esc(mv.reason)}</div><div class="cell-sub mono">${UI.esc(mv.ref)}</div></td>
+                    <td><div class="cell-main">${UI.esc(mv.product)}</div><div class="cell-sub mono">${UI.esc(UI.sizeLabel(mv.variant))} · ${UI.esc(mv.sku)}</div></td>
+                    <td><div>${UI.esc(UI.reason(mv.reason))}</div><div class="cell-sub mono">${UI.esc(mv.ref)}</div></td>
                     <td class="right"><span class="mov-delta ${mv.type === 'entrada' ? 'in' : 'out'}">${mv.type === 'entrada' ? '+' : '−'}${mv.qty}</span></td>
                     <td class="right"><span class="mov-flow"><span class="from">${mv.before}</span><span class="arrow">→</span><span class="to">${mv.after}</span></span></td>
                     <td class="tiny muted nowrap">${UI.relative(mv.date)}<div class="cell-sub">${UI.esc(mv.user)}</div></td>
@@ -149,6 +202,21 @@ const Admin = {
       </div>
 
       <div style="display:flex;flex-direction:column;gap:var(--s5)">
+        <div class="card">
+          <div class="card-head"><h2>${I18N.t('adm.dashboard.salesByStore')}</h2><button class="btn btn-sm" data-goto="stores">${I18N.t('adm.dashboard.viewAll')}</button></div>
+          <div class="card-body">
+            ${m.byStore.map((b, i) => `
+              <div class="bar-row">
+                <div class="bar-label">
+                  <div style="font-weight:560">${UI.esc(b.store.short)}</div>
+                  <div class="tiny muted">${I18N.t(b.store.active ? 'adm.dashboard.storeOrders' : 'adm.dashboard.storePrep', { n: b.orders, phase: b.store.phase })}</div>
+                </div>
+                <div class="bar-track"><div class="bar-fill ${i === 0 ? 'gold' : ''}" style="width:${(b.revenue / maxStore) * 100}%"></div></div>
+                <div class="bar-val">${UI.money0(b.revenue)}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-head"><h2>${I18N.t('adm.dashboard.topSellers')}</h2></div>
           <div class="card-body">
@@ -168,15 +236,15 @@ const Admin = {
           <div class="card-head"><h2>${I18N.t('adm.dashboard.ordersToAttend')}</h2><button class="btn btn-sm" data-goto="orders">${I18N.t('adm.dashboard.viewAll')}</button></div>
           <div class="card-body">
             ${pending.length ? pending.map(o => {
-              const c = Store.customers.find(x => x.id === o.customerId);
+              const c = this.customerOf(o);
               return `<div class="list-row">
                 <div style="flex:1;min-width:0">
                   <div class="cell-main mono">${o.number}</div>
-                  <div class="cell-sub">${UI.esc(c ? c.name : '—')}</div>
+                  <div class="cell-sub">${UI.esc(c ? c.name : '—')} · ${UI.esc(UI.storeName(o.storeId))}</div>
                 </div>
                 <div style="text-align:right">
                   <div style="font-weight:620">${UI.money(o.total)}</div>
-                  <div style="margin-top:3px">${UI.orderBadge(o.status)}</div>
+                  <div style="margin-top:3px">${UI.orderBadge(o.status, o.fulfillment)}</div>
                 </div>
               </div>`;
             }).join('') : `<p class="muted tiny">${I18N.t('adm.dashboard.noPendingOrders')}</p>`}
@@ -188,10 +256,12 @@ const Admin = {
 
   dashboardBind() {
     document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => this.go(b.dataset.goto));
-    const n = document.getElementById('dashNew');
-    if (n) n.onclick = () => this.productForm();
-    const r = document.getElementById('dashReset');
-    if (r) r.onclick = () => UI.confirm(
+    document.getElementById('dashNew').onclick = () => this.productForm();
+    document.getElementById('dashReset').onclick = () => this.confirmReset();
+  },
+
+  confirmReset() {
+    UI.confirm(
       I18N.t('adm.dashboard.resetTitle'),
       I18N.t('adm.dashboard.resetBody'),
       () => { Store.reset(); App.refreshAll(); UI.toast('ok', I18N.t('adm.dashboard.resetDone'), I18N.t('adm.dashboard.resetDoneBody')); },
@@ -200,38 +270,39 @@ const Admin = {
   },
 
   /* ============================================================
-     INVENTARIO — vista por variante (la unidad real de stock)
+     INVENTARIO — una fila por talla, sin importar en qué tienda se venda
      ============================================================ */
-  inventoryHTML() {
+  inventoryRows() {
     const f = this.f.inv;
     const rows = [];
-
     Store.products.forEach(p => {
-      if (!p.active) return;
-      if (f.cat !== 'todos' && p.category !== f.cat) return;
+      if (!p.active || Store.isKit(p)) return;
+      if (!this.matchStore(p, f.store)) return;
+      if (f.kind !== 'todos' && p.kind !== f.kind) return;
       p.variants.forEach(v => {
         const st = Store.variantStatus(p, v);
         if (f.status !== 'todos' && st !== f.status) return;
         if (f.q) {
           const q = f.q;
-          const hit = p.name.toLowerCase().includes(q) || v.sku.toLowerCase().includes(q) ||
-                      v.color.toLowerCase().includes(q) || v.size.toLowerCase().includes(q);
+          const hit = p.name.toLowerCase().includes(q) || v.sku.toLowerCase().includes(q) || v.size.toLowerCase() === q;
           if (!hit) return;
         }
         rows.push({ p, v, st });
       });
     });
+    const rank = { agotado: 0, bajo: 1, ok: 2 };
+    const si = s => SEED.sizeScale.indexOf(s);
+    rows.sort((a, b) => (rank[a.st] - rank[b.st]) || a.p.name.localeCompare(b.p.name) || si(a.v.size) - si(b.v.size));
+    return rows;
+  },
 
-    rows.sort((a, b) => {
-      const rank = { 'agotado': 0, 'bajo': 1, 'ok': 2, 'bajo-pedido': 3 };
-      return (rank[a.st] - rank[b.st]) || a.p.name.localeCompare(b.p.name, 'es');
-    });
-
-    // Los artículos bajo pedido no son stock físico en bodega: su "99" es un
-    // marcador de fabricación, no capital inmovilizado. Se excluyen del valor.
-    const real = rows.filter(r => !r.p.madeToOrder);
-    const totalValue = real.reduce((s, r) => s + r.v.stock * r.p.cost, 0);
-    const totalUnits = real.reduce((s, r) => s + r.v.stock, 0);
+  inventoryHTML() {
+    const f = this.f.inv;
+    const rows = this.inventoryRows();
+    const totalValue = rows.reduce((s, r) => s + r.v.stock * r.p.cost, 0);
+    const totalUnits = rows.reduce((s, r) => s + r.v.stock, 0);
+    const low = rows.filter(r => r.st === 'bajo').length;
+    const shared = Store.products.filter(p => p.stores.length > 1).length;
 
     return this.head(
       I18N.t('adm.inv.title'),
@@ -241,26 +312,24 @@ const Admin = {
     ) + `
     <div class="kpi-grid">
       <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.inv.listedSkus')}</div><div class="kpi-value">${rows.length}</div><div class="kpi-foot">${I18N.t('adm.inv.ofActive', { n: Store.metrics().skuCount })}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.inv.unitsInStock')}</div><div class="kpi-value">${UI.num(totalUnits)}</div><div class="kpi-foot">${I18N.t('adm.inv.excludesMadeToOrder')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.inv.unitsInStock')}</div><div class="kpi-value">${UI.num(totalUnits)}</div><div class="kpi-foot">${I18N.t('adm.inv.sharedFoot', { n: shared })}</div></div>
       <div class="kpi"><div class="kpi-label">${I18N.t('adm.inv.costValue')}</div><div class="kpi-value">${UI.money0(totalValue)}</div><div class="kpi-foot">${I18N.t('adm.inv.tiedCapital')}</div></div>
-      <div class="kpi ${rows.filter(r => r.st === 'bajo').length ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.inv.belowMin')}</div><div class="kpi-value">${rows.filter(r => r.st === 'bajo').length}</div><div class="kpi-foot">${I18N.t('adm.inv.needsRestock')}</div></div>
+      <div class="kpi ${low ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.inv.belowMin')}</div><div class="kpi-value">${low}</div><div class="kpi-foot">${I18N.t('adm.inv.needsRestock')}</div></div>
     </div>
 
     <div class="card">
       <div class="filter-bar">
-        <div class="search-box">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" id="invQ" placeholder="${I18N.t('adm.inv.searchPlaceholder')}" value="${UI.esc(f.q)}">
-        </div>
+        ${this.searchBox('invQ', f, I18N.t('adm.inv.searchPlaceholder'))}
+        <select class="select" id="invStore">${this.storeOptions(f.store, true)}</select>
+        <select class="select" id="invKind">
+          <option value="todos">${I18N.t('adm.inv.allKinds')}</option>
+          ${SEED.kinds.filter(k => k !== 'kit').map(k => `<option value="${k}"${f.kind === k ? ' selected' : ''}>${I18N.t('kind.' + k)}</option>`).join('')}
+        </select>
         <select class="select" id="invStatus">
           <option value="todos">${I18N.t('adm.inv.allStatuses')}</option>
           <option value="ok"${f.status === 'ok' ? ' selected' : ''}>${I18N.t('adm.inv.available')}</option>
           <option value="bajo"${f.status === 'bajo' ? ' selected' : ''}>${I18N.t('adm.inv.lowStock')}</option>
           <option value="agotado"${f.status === 'agotado' ? ' selected' : ''}>${I18N.t('adm.inv.outOfStock')}</option>
-        </select>
-        <select class="select" id="invCat">
-          <option value="todos">${I18N.t('adm.inv.allCategories')}</option>
-          ${SEED.categories.map(c => `<option value="${c.id}"${f.cat === c.id ? ' selected' : ''}>${UI.esc(c.name)}</option>`).join('')}
         </select>
       </div>
 
@@ -269,27 +338,29 @@ const Admin = {
         <div class="table-wrap">
           <table class="data">
             <thead><tr>
-              <th>${I18N.t('adm.inv.colProductVariant')}</th><th>${I18N.t('adm.inv.colSku')}</th><th class="right">${I18N.t('adm.inv.colStock')}</th>
-              <th class="right">${I18N.t('adm.inv.colMin')}</th><th>${I18N.t('adm.inv.colStatus')}</th><th class="right">${I18N.t('adm.inv.colCostValue')}</th><th class="right">${I18N.t('adm.inv.colActions')}</th>
+              <th>${I18N.t('adm.inv.colProductVariant')}</th><th>${I18N.t('adm.inv.colSku')}</th><th>${I18N.t('adm.inv.colStores')}</th>
+              <th class="right">${I18N.t('adm.inv.colStock')}</th><th class="right">${I18N.t('adm.inv.colMin')}</th><th>${I18N.t('adm.inv.colStatus')}</th>
+              <th class="right">${I18N.t('adm.inv.colCostValue')}</th><th class="right">${I18N.t('adm.inv.colActions')}</th>
             </tr></thead>
             <tbody>
-              ${rows.map(({ p, v, st }) => `
+              ${rows.slice(0, 300).map(({ p, v, st }) => `
                 <tr>
                   <td>
                     <div class="cell-flex">
-                      <div class="thumb" style="background:${v.colorHex};color:${['#f2f3f5','#c9a227'].includes(v.colorHex) ? '#16181d' : '#fff'}">${UI.esc(v.size)}</div>
+                      ${UI.thumb(p)}
                       <div>
                         <div class="cell-main">${UI.esc(p.name)}</div>
-                        <div class="cell-sub">${UI.esc(v.size)} · ${UI.esc(v.color)}</div>
+                        <div class="cell-sub">${I18N.t('shop.size')} <b>${UI.esc(UI.sizeLabel(v.size))}</b> · ${I18N.t('kind.' + p.kind)}</div>
                       </div>
                     </div>
                   </td>
                   <td class="mono tiny">${UI.esc(v.sku)}</td>
+                  <td><div class="tags">${UI.storeTags(p)}</div></td>
                   <td class="right">
                     <div style="font-weight:680;font-size:15px">${v.stock}</div>
-                    ${p.madeToOrder ? '' : UI.stockBar(v.stock, p.minStock)}
+                    ${UI.stockBar(v.stock, p.minStock)}
                   </td>
-                  <td class="right muted">${p.madeToOrder ? '—' : p.minStock}</td>
+                  <td class="right muted">${p.minStock}</td>
                   <td>${UI.stockBadge(st)}</td>
                   <td class="right mono">${UI.money(v.stock * p.cost)}</td>
                   <td class="right nowrap">
@@ -305,47 +376,36 @@ const Admin = {
   },
 
   inventoryBind() {
-    const q = document.getElementById('invQ');
-    q.oninput = () => {
-      this.f.inv.q = q.value.trim().toLowerCase();
-      const pos = q.selectionStart;
-      this.renderPage('inventory');
-      const nq = document.getElementById('invQ');
-      nq.focus(); nq.setSelectionRange(pos, pos);
-    };
-    document.getElementById('invStatus').onchange = e => { this.f.inv.status = e.target.value; this.renderPage('inventory'); };
-    document.getElementById('invCat').onchange    = e => { this.f.inv.cat = e.target.value; this.renderPage('inventory'); };
-    document.getElementById('invMove').onclick    = () => this.movementForm();
-    document.getElementById('invExport').onclick  = () => this.exportInventory();
+    this.bindSearch('invQ', this.f.inv, 'inventory');
+    this.bindSelect('invStatus', this.f.inv, 'status', 'inventory');
+    this.bindSelect('invStore', this.f.inv, 'store', 'inventory');
+    this.bindSelect('invKind', this.f.inv, 'kind', 'inventory');
+    document.getElementById('invMove').onclick = () => this.movementForm();
+    document.getElementById('invExport').onclick = () => this.exportInventory();
 
     document.querySelectorAll('[data-in]').forEach(b  => b.onclick = () => this.movementForm(b.dataset.in, 'entrada'));
     document.querySelectorAll('[data-out]').forEach(b => b.onclick = () => this.movementForm(b.dataset.out, 'salida'));
   },
 
   exportInventory() {
-    const lines = [['SKU', 'Producto', 'Talla', 'Color', 'Stock', 'Minimo', 'Costo', 'Precio', 'Valor_costo'].join(',')];
-    Store.products.filter(p => p.active).forEach(p => p.variants.forEach(v => {
-      lines.push([v.sku, `"${p.name}"`, v.size, v.color, v.stock, p.minStock, p.cost, p.price, (v.stock * p.cost).toFixed(2)].join(','));
+    const lines = [['SKU', 'Product', 'Size', 'Stores', 'Stock', 'Min', 'Cost', 'Price', 'Cost_value'].join(',')];
+    Store.products.filter(p => p.active && !Store.isKit(p)).forEach(p => p.variants.forEach(v => {
+      lines.push([v.sku, `"${p.name}"`, v.size, `"${p.stores.join(' / ') || 'internal'}"`, v.stock, p.minStock, p.cost, p.price, (v.stock * p.cost).toFixed(2)].join(','));
     }));
-    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'inventario_soccercage_2026-09-19.csv';
-    a.click();
+    UI.download('inventory_soccercage_' + Store.dayKey(new Date()) + '.csv', lines.join('\n'));
     UI.toast('ok', I18N.t('adm.inv.exportDone'), I18N.t('adm.inv.exportDoneBody'));
   },
 
   /* ---------- Formulario de movimiento manual ---------- */
   movementForm(variantId, type) {
     const opts = [];
-    Store.products.filter(p => p.active).forEach(p =>
-      p.variants.forEach(v => opts.push({ id: v.id, label: `${p.name} · ${v.size} / ${v.color} (${v.stock} u.)`, sku: v.sku }))
+    Store.products.filter(p => p.active && !Store.isKit(p)).forEach(p =>
+      p.variants.forEach(v => opts.push({ id: v.id, label: `${p.name} · ${UI.sizeLabel(v.size)} (${v.stock})` }))
     );
+    opts.sort((a, b) => a.label.localeCompare(b.label));
 
     UI.modal(`
-      <div class="modal-head"><h2>${I18N.t('adm.mv.formTitle')}</h2>
-        <button class="icon-btn" onclick="UI.closeModal()" aria-label="${I18N.t('adm.mv.close')}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-      </div>
+      <div class="modal-head"><h2>${I18N.t('adm.mv.formTitle')}</h2>${UI.closeBtn()}</div>
       <div class="modal-body">
         <div class="field">
           <label for="mvVariant">${I18N.t('adm.mv.variant')} <span class="req">*</span></label>
@@ -357,7 +417,7 @@ const Admin = {
           <div class="field">
             <label for="mvType">${I18N.t('adm.mv.type')} <span class="req">*</span></label>
             <select class="select" id="mvType">
-              <option value="entrada"${type === 'entrada' ? ' selected' : ''}>${I18N.t('adm.mv.typeIn')}</option>
+              <option value="entrada"${type !== 'salida' ? ' selected' : ''}>${I18N.t('adm.mv.typeIn')}</option>
               <option value="salida"${type === 'salida' ? ' selected' : ''}>${I18N.t('adm.mv.typeOut')}</option>
             </select>
           </div>
@@ -389,7 +449,7 @@ const Admin = {
     const pv  = document.getElementById('mvPreview');
 
     const fillReasons = () => {
-      rs.innerHTML = SEED.reasons[tp.value].map(r => `<option>${UI.esc(r)}</option>`).join('');
+      rs.innerHTML = SEED.reasons[tp.value].map(r => `<option value="${r}">${UI.esc(UI.reason(r))}</option>`).join('');
     };
 
     const preview = () => {
@@ -401,7 +461,7 @@ const Admin = {
       const bad = after < 0;
       pv.className = 'alert ' + (bad ? 'alert-danger' : 'alert-info');
       pv.innerHTML = `
-        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        ${UI.infoIcon()}
         <div>
           <div class="alert-title">${bad ? I18N.t('adm.mv.notAllowed') : I18N.t('adm.mv.expectedResult')}</div>
           <div class="alert-body mono">
@@ -430,39 +490,38 @@ const Admin = {
       UI.closeModal();
       App.refreshAll();
       UI.toast('ok', I18N.t('adm.mv.logged'),
-        `${r.movement.sku}: ${r.movement.before} → ${r.movement.after} (${r.movement.reason})`);
+        `${r.movement.sku}: ${r.movement.before} → ${r.movement.after} (${UI.reason(r.movement.reason)})`);
     };
   },
 
   /* ============================================================
-     PRODUCTOS
+     PRODUCTOS — piezas y kits
      ============================================================ */
   productsHTML() {
     const f = this.f.prod;
     let list = Store.products.slice();
 
-    if (f.cat !== 'todos') list = list.filter(p => p.category === f.cat);
+    list = list.filter(p => this.matchStore(p, f.store));
+    if (f.type === 'kits')   list = list.filter(p => Store.isKit(p));
+    if (f.type === 'pieces') list = list.filter(p => !Store.isKit(p));
     if (f.active === 'activos')   list = list.filter(p => p.active);
     if (f.active === 'inactivos') list = list.filter(p => !p.active);
-    if (f.q) {
-      const q = f.q;
-      list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
-    }
+    if (f.q) list = list.filter(p => p.name.toLowerCase().includes(f.q) || p.sku.toLowerCase().includes(f.q));
 
     return this.head(
       I18N.t('adm.products.title'),
       I18N.t('adm.products.sub'),
-      `<button class="btn btn-primary btn-sm" id="prodNew">${I18N.t('adm.products.newBtn')}</button>`
+      `<button class="btn btn-sm" id="prodNewKit">${I18N.t('adm.products.newKitBtn')}</button>
+       <button class="btn btn-primary btn-sm" id="prodNew">${I18N.t('adm.products.newBtn')}</button>`
     ) + `
     <div class="card">
       <div class="filter-bar">
-        <div class="search-box">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" id="prodQ" placeholder="${I18N.t('adm.products.searchPh')}" value="${UI.esc(f.q)}">
-        </div>
-        <select class="select" id="prodCat">
-          <option value="todos">${I18N.t('adm.products.allCategories')}</option>
-          ${SEED.categories.map(c => `<option value="${c.id}"${f.cat === c.id ? ' selected' : ''}>${UI.esc(c.name)}</option>`).join('')}
+        ${this.searchBox('prodQ', f, I18N.t('adm.products.searchPh'))}
+        <select class="select" id="prodStore">${this.storeOptions(f.store, true)}</select>
+        <select class="select" id="prodType">
+          <option value="todos">${I18N.t('adm.products.allTypes')}</option>
+          <option value="kits"${f.type === 'kits' ? ' selected' : ''}>${I18N.t('adm.products.onlyKits')}</option>
+          <option value="pieces"${f.type === 'pieces' ? ' selected' : ''}>${I18N.t('adm.products.onlyPieces')}</option>
         </select>
         <select class="select" id="prodActive">
           <option value="todos">${I18N.t('adm.products.allActive')}</option>
@@ -476,32 +535,34 @@ const Admin = {
         <div class="table-wrap">
           <table class="data">
             <thead><tr>
-              <th>${I18N.t('adm.products.colProduct')}</th><th>${I18N.t('adm.products.colCategory')}</th><th class="right">${I18N.t('adm.products.colVariants')}</th>
-              <th class="right">${I18N.t('adm.products.colTotalStock')}</th><th class="right">${I18N.t('adm.products.colCost')}</th><th class="right">${I18N.t('adm.products.colPrice')}</th>
-              <th class="right">${I18N.t('adm.products.colMargin')}</th><th>${I18N.t('adm.products.colStatus')}</th><th class="right">${I18N.t('adm.products.colActions')}</th>
+              <th>${I18N.t('adm.products.colProduct')}</th><th>${I18N.t('adm.products.colType')}</th><th>${I18N.t('adm.products.colStores')}</th>
+              <th class="right">${I18N.t('adm.products.colSizes')}</th><th class="right">${I18N.t('adm.products.colTotalStock')}</th>
+              <th class="right">${I18N.t('adm.products.colPrice')}</th>
+              <th>${I18N.t('adm.products.colStatus')}</th><th class="right">${I18N.t('adm.products.colActions')}</th>
             </tr></thead>
             <tbody>
               ${list.map(p => {
-                const total = Store.productStock(p);
+                const kit = Store.isKit(p);
+                const cost = kit ? Store.kitCost(p) : p.cost;
+                const margin = p.price > 0 ? ((p.price - cost) / p.price * 100) : 0;
                 const st = Store.productStatus(p);
-                const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100) : 0;
-                const hex = (p.variants[0] || {}).colorHex || '#6b7280';
                 return `<tr>
                   <td>
                     <div class="cell-flex">
-                      <div class="thumb" style="background:${UI.mediaBg()};padding:4px">${UI.garment(p.category, hex)}</div>
+                      ${UI.thumb(p)}
                       <div>
                         <div class="cell-main">${UI.esc(p.name)}</div>
                         <div class="cell-sub mono">${UI.esc(p.sku)}</div>
                       </div>
                     </div>
                   </td>
-                  <td class="muted">${UI.esc(UI.catName(p.category))}</td>
-                  <td class="right">${p.variants.length}</td>
-                  <td class="right"><strong>${p.madeToOrder ? '—' : UI.num(total)}</strong></td>
-                  <td class="right mono muted">${UI.money(p.cost)}</td>
-                  <td class="right mono"><strong>${UI.money(p.price)}</strong></td>
-                  <td class="right"><span class="delta ${margin >= 50 ? 'up' : ''}">${margin.toFixed(0)}%</span></td>
+                  <td><div>${kit ? `<span class="badge badge-gold">${I18N.t('kind.kit')}</span>` : I18N.t('kind.' + p.kind)}</div><div class="cell-sub">${UI.esc(UI.catNames(p))}</div></td>
+                  <td><div class="tags">${UI.storeTags(p)}</div></td>
+                  <td class="right nowrap">${kit ? I18N.t('adm.products.pieces', { n: (p.components || []).reduce((s, c) => s + c.qty, 0) }) : p.variants.length}</td>
+                  <td class="right nowrap"><strong>${kit ? I18N.t('adm.products.kitsPossible', { n: UI.num(Store.productStock(p)) }) : UI.num(Store.productStock(p))}</strong></td>
+                  <td class="right nowrap"><strong class="mono">${UI.money(p.price)}</strong>
+                    <div class="cell-sub">${I18N.t('adm.products.costLine', { cost: UI.money(cost) })}${p.price > 0 ? ` · <span class="delta ${margin >= 40 ? 'up' : ''}">${margin.toFixed(0)}%</span>` : ''}</div>
+                    ${kit && Store.kitSavings(p) ? `<div class="cell-sub">${I18N.t('adm.products.kitDiscount', { amount: UI.money(Store.kitSavings(p)) })}</div>` : ''}</td>
                   <td>${UI.stockBadge(st)}</td>
                   <td class="right nowrap">
                     <button class="btn btn-sm" data-edit="${p.id}">${I18N.t('adm.products.editBtn')}</button>
@@ -517,17 +578,12 @@ const Admin = {
   },
 
   productsBind() {
-    const q = document.getElementById('prodQ');
-    q.oninput = () => {
-      this.f.prod.q = q.value.trim().toLowerCase();
-      const pos = q.selectionStart;
-      this.renderPage('products');
-      const nq = document.getElementById('prodQ');
-      nq.focus(); nq.setSelectionRange(pos, pos);
-    };
-    document.getElementById('prodCat').onchange    = e => { this.f.prod.cat = e.target.value; this.renderPage('products'); };
-    document.getElementById('prodActive').onchange = e => { this.f.prod.active = e.target.value; this.renderPage('products'); };
-    document.getElementById('prodNew').onclick     = () => this.productForm();
+    this.bindSearch('prodQ', this.f.prod, 'products');
+    this.bindSelect('prodStore', this.f.prod, 'store', 'products');
+    this.bindSelect('prodType', this.f.prod, 'type', 'products');
+    this.bindSelect('prodActive', this.f.prod, 'active', 'products');
+    document.getElementById('prodNew').onclick = () => this.productForm();
+    document.getElementById('prodNewKit').onclick = () => this.productForm(null, 'kit');
 
     document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => this.productForm(b.dataset.edit));
     document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
@@ -538,253 +594,401 @@ const Admin = {
         UI.toast('ok', r.active ? I18N.t('adm.products.activatedTitle') : I18N.t('adm.products.deactivatedTitle'),
           r.active ? I18N.t('adm.products.activatedBody') : I18N.t('adm.products.deactivatedBody'));
       };
-      if (p.active) UI.confirm(I18N.t('adm.products.confirmDeactivateTitle'),
-        I18N.t('adm.products.confirmDeactivateBody', { name: `<strong>${UI.esc(p.name)}</strong>` }),
+      if (!p.active) return act();
+      const kits = Store.kitsUsing(p.id).filter(k => k.active);
+      UI.confirm(I18N.t('adm.products.confirmDeactivateTitle'),
+        I18N.t('adm.products.confirmDeactivateBody', { name: `<strong>${UI.esc(p.name)}</strong>` }) +
+        (kits.length ? `<br><br><strong>${I18N.t('adm.products.confirmKits', { list: kits.map(k => UI.esc(k.name)).join(', ') })}</strong>` : ''),
         act, true);
-      else act();
     });
   },
 
   /* ---------- Alta / edición de producto ---------- */
-  productForm(id) {
+  productForm(id, presetKind) {
     const p = id ? Store.product(id) : null;
-    this.draftVariants = p
-      ? JSON.parse(JSON.stringify(p.variants))
-      : [{ id: 'nv1', sku: '', size: 'M', color: 'Negro', colorHex: '#16181d', stock: 0, reserved: 0, priceDelta: 0 }];
+    const kit = p ? Store.isKit(p) : presetKind === 'kit';
+
+    const sizes = {};
+    if (p && !kit) p.variants.forEach(v => { sizes[v.size] = { on: true, stock: v.stock }; });
+    if (!p && !kit) SEED.sizeSets.apparel.forEach(s => { sizes[s] = { on: true, stock: 0 }; });
+
+    this.draft = {
+      existing: p, kit,
+      image: p ? p.image : null,
+      sizes,
+      components: p && kit ? clone(p.components || []) : []
+    };
+
+    const check = (name, value, label, on, cls) => `
+      <label class="chip chip-check ${cls || ''}">
+        <input type="checkbox" name="${name}" value="${value}" ${on ? 'checked' : ''}> ${label}
+      </label>`;
 
     UI.modal(`
       <div class="modal-head">
-        <h2>${p ? I18N.t('adm.pf.editTitle') : I18N.t('adm.pf.newTitle')}</h2>
-        <button class="icon-btn" onclick="UI.closeModal()" aria-label="${I18N.t('adm.pf.close')}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        <div>
+          <h2>${I18N.t(p ? (kit ? 'adm.pf.editKitTitle' : 'adm.pf.editTitle') : (kit ? 'adm.pf.newKitTitle' : 'adm.pf.newTitle'))}</h2>
+          <p class="muted tiny" style="margin-top:2px">${I18N.t(kit ? 'adm.pf.kitIntro' : 'adm.pf.pieceIntro')}</p>
+        </div>
+        ${UI.closeBtn()}
       </div>
       <div class="modal-body">
+        <div class="pf-top">
+          <div class="pf-image">
+            <div class="pf-preview" id="pfPreview"></div>
+            <label class="btn btn-sm pf-upload">
+              ${I18N.t('adm.pf.upload')}
+              <input type="file" id="pfFile" accept="image/*" hidden>
+            </label>
+            <button class="btn btn-sm btn-ghost" id="pfImgClear" type="button">${I18N.t('adm.pf.removeImage')}</button>
+          </div>
+
+          <div class="pf-main">
+            <div class="field">
+              <label for="pfName">${I18N.t('adm.pf.name')} <span class="req">*</span></label>
+              <input class="input" id="pfName" data-autofocus value="${p ? UI.esc(p.name) : ''}" placeholder="${I18N.t(kit ? 'adm.pf.namePhKit' : 'adm.pf.namePh')}">
+              <div class="err-msg" id="pfErrName">${I18N.t('adm.pf.errName')}</div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="pfSku">${I18N.t('adm.pf.sku')} <span class="req">*</span></label>
+                <input class="input mono" id="pfSku" value="${p ? UI.esc(p.sku) : ''}" placeholder="${kit ? 'CAMP-KIT' : 'CAMP-JER'}" style="text-transform:uppercase">
+                <div class="err-msg" id="pfErrSku">${I18N.t('adm.pf.errSku')}</div>
+              </div>
+              ${kit ? `
+              <div class="field">
+                <label for="pfLine">${I18N.t('adm.pf.line')}</label>
+                <select class="select" id="pfLine">${this.lineOptions(p)}</select>
+              </div>` : `
+              <div class="field">
+                <label for="pfKind">${I18N.t('adm.pf.kind')}</label>
+                <select class="select" id="pfKind">
+                  ${SEED.kinds.filter(k => k !== 'kit').map(k => `<option value="${k}"${p && p.kind === k ? ' selected' : ''}>${I18N.t('kind.' + k)}</option>`).join('')}
+                </select>
+              </div>`}
+            </div>
+          </div>
+        </div>
+
         <div class="form-grid">
-          <div class="field span-2">
-            <label for="pfName">${I18N.t('adm.pf.name')} <span class="req">*</span></label>
-            <input class="input" id="pfName" data-autofocus value="${p ? UI.esc(p.name) : ''}" placeholder="${I18N.t('adm.pf.namePh')}">
-            <div class="err-msg" id="pfErrName">${I18N.t('adm.pf.errName')}</div>
+          <div class="field">
+            <label>${I18N.t('adm.pf.category')}</label>
+            <div class="chips">
+              ${SEED.categories.map(c => check('pfCat', c, I18N.t('cat.' + c), p ? p.categories.includes(c) : c === 'player')).join('')}
+            </div>
           </div>
           <div class="field">
-            <label for="pfSku">${I18N.t('adm.pf.sku')} <span class="req">*</span></label>
-            <input class="input mono" id="pfSku" value="${p ? UI.esc(p.sku) : ''}" placeholder="${I18N.t('adm.pf.skuPh')}">
-            <div class="err-msg" id="pfErrSku">${I18N.t('adm.pf.errSku')}</div>
-          </div>
-          <div class="field">
-            <label for="pfCat">${I18N.t('adm.pf.category')}</label>
-            <select class="select" id="pfCat">
-              ${SEED.categories.map(c => `<option value="${c.id}"${p && p.category === c.id ? ' selected' : ''}>${UI.esc(c.name)}</option>`).join('')}
-            </select>
+            <label>${I18N.t('adm.pf.stores')}</label>
+            <div class="chips">
+              ${Store.stores.map(s => check('pfStore', s.id, UI.esc(s.short), p ? p.stores.includes(s.id) : s.id === Store.state.currentStore)).join('')}
+            </div>
+            <div class="hint">${I18N.t('adm.pf.storesHint')}</div>
           </div>
           <div class="field span-2">
             <label for="pfDesc">${I18N.t('adm.pf.desc')}</label>
-            <textarea class="input" id="pfDesc" rows="3" placeholder="${I18N.t('adm.pf.descPh')}">${p ? UI.esc(p.description) : ''}</textarea>
+            <textarea class="input" id="pfDesc" rows="2" placeholder="${I18N.t('adm.pf.descPh')}">${p ? UI.esc(p.description || '') : ''}</textarea>
           </div>
+
           <div class="field">
-            <label for="pfCost">${I18N.t('adm.pf.cost')} <span class="req">*</span></label>
-            <input class="input" id="pfCost" type="number" step="0.01" min="0" value="${p ? p.cost : ''}" placeholder="17.80">
-          </div>
-          <div class="field">
-            <label for="pfPrice">${I18N.t('adm.pf.price')} <span class="req">*</span></label>
-            <input class="input" id="pfPrice" type="number" step="0.01" min="0" value="${p ? p.price : ''}" placeholder="42.00">
+            <label for="pfPrice">${I18N.t(kit ? 'adm.pf.kitPrice' : 'adm.pf.price')} <span class="req">*</span></label>
+            <input class="input" id="pfPrice" type="number" step="0.01" min="0" value="${p ? p.price : ''}" placeholder="${kit ? '50.00' : '25.00'}">
             <div class="hint" id="pfMargin"></div>
+          </div>
+          ${kit ? `
+          <div class="field">
+            <label for="pfDisc">${I18N.t('adm.pf.kitDiscount')}</label>
+            <input class="input" id="pfDisc" type="number" step="1" min="0" max="90" placeholder="10">
+            <div class="hint">${I18N.t('adm.pf.kitDiscountHint')}</div>
+          </div>` : `
+          <div class="field">
+            <label for="pfCost">${I18N.t('adm.pf.cost')}</label>
+            <input class="input" id="pfCost" type="number" step="0.01" min="0" value="${p ? p.cost : ''}" placeholder="12.00">
           </div>
           <div class="field">
             <label for="pfMin">${I18N.t('adm.pf.min')}</label>
-            <input class="input" id="pfMin" type="number" min="0" value="${p ? p.minStock : 8}">
+            <input class="input" id="pfMin" type="number" min="0" value="${p ? p.minStock : Store.settings.lowStockGlobal}">
             <div class="hint">${I18N.t('adm.pf.minHint')}</div>
           </div>
           <div class="field">
-            <label>${I18N.t('adm.pf.options')}</label>
-            <label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:8px;cursor:pointer">
-              <input type="checkbox" id="pfActive" ${!p || p.active ? 'checked' : ''} style="accent-color:#c9a227"> ${I18N.t('adm.pf.activeLabel')}
+            <label for="pfLine">${I18N.t('adm.pf.line')}</label>
+            <select class="select" id="pfLine">${this.lineOptions(p)}</select>
+          </div>`}
+          <div class="field span-2">
+            <label style="display:inline-flex;align-items:center;gap:8px;font-weight:500;cursor:pointer;margin-right:18px">
+              <input type="checkbox" id="pfActive" ${!p || p.active ? 'checked' : ''}> ${I18N.t('adm.pf.activeLabel')}
             </label>
-            <label style="display:flex;align-items:center;gap:8px;font-weight:500;margin-top:8px;cursor:pointer">
-              <input type="checkbox" id="pfFeat" ${p && p.featured ? 'checked' : ''} style="accent-color:#c9a227"> ${I18N.t('adm.pf.featuredLabel')}
+            <label style="display:inline-flex;align-items:center;gap:8px;font-weight:500;cursor:pointer">
+              <input type="checkbox" id="pfFeat" ${p && p.featured ? 'checked' : ''}> ${I18N.t('adm.pf.featuredLabel')}
             </label>
           </div>
         </div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px;gap:12px;flex-wrap:wrap">
-          <div>
-            <h3>${I18N.t('adm.pf.variantsTitle')}</h3>
-            <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.pf.variantsSub')}</p>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sm" id="pfGen">${I18N.t('adm.pf.genSizes')}</button>
-            <button class="btn btn-sm" id="pfAddVar">${I18N.t('adm.pf.addVar')}</button>
-          </div>
-        </div>
-
-        <div class="var-editor">
-          <div class="var-head"><span>${I18N.t('adm.pf.colSku')}</span><span>${I18N.t('adm.pf.colColor')}</span><span>${I18N.t('adm.pf.colSize')}</span><span>${I18N.t('adm.pf.colStock')}</span><span>${I18N.t('adm.pf.colPriceDelta')}</span><span></span></div>
-          <div id="pfVars"></div>
-        </div>
-        ${p ? `<div class="hint" style="margin-top:10px">${I18N.t('adm.pf.editHint')}</div>` : ''}
+        <div id="pfDyn"></div>
+        ${p && !kit ? `<div class="hint" style="margin-top:10px">${I18N.t('adm.pf.editHint')}</div>` : ''}
       </div>
       <div class="modal-foot">
         <button class="btn" onclick="UI.closeModal()">${I18N.t('adm.pf.cancel')}</button>
-        <button class="btn btn-primary" id="pfSave">${p ? I18N.t('adm.pf.saveEdit') : I18N.t('adm.pf.saveNew')}</button>
+        <button class="btn btn-primary" id="pfSave">${p ? I18N.t('adm.pf.saveEdit') : I18N.t(kit ? 'adm.pf.saveNewKit' : 'adm.pf.saveNew')}</button>
       </div>`, 'wide');
 
-    this.renderVariantRows();
+    this.renderPfImage();
+    this.renderPfDyn();
 
-    const cost = document.getElementById('pfCost');
-    const price = document.getElementById('pfPrice');
-    const showMargin = () => {
-      const c = parseFloat(cost.value) || 0, pr = parseFloat(price.value) || 0;
-      const el = document.getElementById('pfMargin');
-      if (pr > 0 && c > 0) {
-        const m = ((pr - c) / pr * 100);
-        el.innerHTML = `${I18N.t('adm.pf.marginLabel')}: <strong style="color:${m >= 50 ? 'var(--ok-600)' : 'var(--warn-600)'}">${m.toFixed(1)}%</strong> · ${UI.money(pr - c)} ${I18N.t('adm.pf.perUnit')}`;
-      } else el.textContent = '';
-    };
-    cost.oninput = showMargin; price.oninput = showMargin; showMargin();
-
-    document.getElementById('pfAddVar').onclick = () => {
-      this.draftVariants.push({
-        id: 'nv' + Date.now(), sku: '', size: 'M', color: 'Negro',
-        colorHex: '#16181d', stock: 0, reserved: 0, priceDelta: 0
+    document.getElementById('pfFile').onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      this.readImage(file, data => {
+        if (!data) { UI.toast('danger', I18N.t('adm.pf.imageErr'), I18N.t('adm.pf.imageErrBody')); return; }
+        this.draft.image = data;
+        this.renderPfImage();
       });
-      this.renderVariantRows();
     };
+    document.getElementById('pfImgClear').onclick = () => { this.draft.image = null; this.renderPfImage(); };
 
-    document.getElementById('pfGen').onclick = () => {
-      const base = document.getElementById('pfSku').value.trim().toUpperCase() || 'SKU';
-      const color = this.draftVariants[0] ? this.draftVariants[0].color : 'Negro';
-      const code = color.replace(/[^A-Za-zÁÉÍÓÚÑ]/g, '').slice(0, 3).toUpperCase();
-      this.draftVariants = SEED.sizes.map((s, i) => ({
-        id: 'nv' + Date.now() + i,
-        sku: `${base}-${code}-${s}`,
-        size: s, color,
-        colorHex: SEED.colorMap[color] || '#6b7280',
-        stock: 0, reserved: 0, priceDelta: 0
-      }));
-      this.renderVariantRows();
-      UI.toast('info', I18N.t('adm.pf.varsGenerated'), I18N.t('adm.pf.varsGeneratedBody'));
+    const kindSel = document.getElementById('pfKind');
+    if (kindSel) kindSel.onchange = () => this.renderPfImage();
+
+    const price = document.getElementById('pfPrice');
+    const cost = document.getElementById('pfCost');
+    price.oninput = () => this.pfSummary();
+    if (cost) cost.oninput = () => this.pfSummary();
+    const disc = document.getElementById('pfDisc');
+    if (disc) disc.oninput = () => {
+      const sum = this.draftKitSum();
+      const d = Math.min(90, Math.max(0, parseFloat(disc.value) || 0));
+      if (sum > 0) price.value = (Math.round(sum * (1 - d / 100) * 100) / 100).toFixed(2);
+      this.pfSummary();
     };
+    this.pfSummary();
 
-    document.getElementById('pfSave').onclick = () => this.saveProductForm(p);
+    document.getElementById('pfSave').onclick = () => this.saveProductForm();
   },
 
-  renderVariantRows() {
-    const box = document.getElementById('pfVars');
-    box.innerHTML = this.draftVariants.map((v, i) => `
-      <div class="var-row">
-        <input class="input mono" data-v="sku" data-i="${i}" value="${UI.esc(v.sku)}" placeholder="SKU-COL-M">
-        <select class="select" data-v="color" data-i="${i}">
-          ${Object.keys(SEED.colorMap).map(c => `<option${v.color === c ? ' selected' : ''}>${c}</option>`).join('')}
-        </select>
-        <select class="select" data-v="size" data-i="${i}">
-          ${SEED.sizes.concat(['Única']).map(s => `<option${v.size === s ? ' selected' : ''}>${s}</option>`).join('')}
-        </select>
-        <input class="input" data-v="stock" data-i="${i}" type="number" min="0" value="${v.stock}">
-        <input class="input" data-v="priceDelta" data-i="${i}" type="number" step="0.01" value="${v.priceDelta || 0}">
-        <button class="icon-btn" data-del-v="${i}" aria-label="${I18N.t('adm.pf.deleteVariant')}">
-          <svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>`).join('');
+  lineOptions(p) {
+    return `<option value="">—</option>` +
+      Object.keys(SEED.lines).map(k => `<option value="${k}"${p && p.line === k ? ' selected' : ''}>${UI.esc(SEED.lines[k])}</option>`).join('');
+  },
 
-    box.querySelectorAll('[data-v]').forEach(inp => {
-      inp.onchange = () => {
-        const i = +inp.dataset.i, k = inp.dataset.v;
-        let val = inp.value;
-        if (k === 'stock') val = Math.max(0, parseInt(val) || 0);
-        if (k === 'priceDelta') val = parseFloat(val) || 0;
-        this.draftVariants[i][k] = val;
-        if (k === 'color') this.draftVariants[i].colorHex = SEED.colorMap[val] || '#6b7280';
+  /** Reduce la foto a 600 px: basta para la tienda y no llena el almacenamiento. */
+  readImage(file, cb) {
+    const r = new FileReader();
+    r.onerror = () => cb(null);
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = () => cb(null);
+      img.onload = () => {
+        const k = Math.min(1, 600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k);
+        c.height = Math.round(img.height * k);
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        cb(c.toDataURL('image/jpeg', 0.85));
       };
-    });
+      img.src = r.result;
+    };
+    r.readAsDataURL(file);
+  },
 
-    box.querySelectorAll('[data-del-v]').forEach(b => b.onclick = () => {
-      if (this.draftVariants.length <= 1) {
-        UI.toast('warn', I18N.t('adm.pf.cantDelete'), I18N.t('adm.pf.cantDeleteBody'));
-        return;
-      }
-      this.draftVariants.splice(+b.dataset.delV, 1);
-      this.renderVariantRows();
+  renderPfImage() {
+    const d = this.draft;
+    const kindSel = document.getElementById('pfKind');
+    const kind = d.kit ? 'kit' : (kindSel ? kindSel.value : 'jersey');
+    const hex = d.existing ? d.existing.colorHex : '#16181d';
+    document.getElementById('pfPreview').innerHTML = d.image
+      ? `<img class="p-photo" src="${UI.esc(d.image)}" alt="">`
+      : UI.garment(kind, hex);
+    document.getElementById('pfImgClear').style.display = d.image ? '' : 'none';
+  },
+
+  draftKitSum() {
+    return round2(this.draft.components.reduce((s, c) => {
+      const x = Store.product(c.productId);
+      return s + (x ? x.price * c.qty : 0);
+    }, 0));
+  },
+
+  pfSummary() {
+    const el = document.getElementById('pfMargin');
+    const pr = parseFloat(document.getElementById('pfPrice').value) || 0;
+    if (this.draft.kit) {
+      const sum = this.draftKitSum();
+      if (!sum) { el.textContent = I18N.t('adm.pf.kitSumEmpty'); return; }
+      const save = round2(sum - pr);
+      el.innerHTML = I18N.t('adm.pf.kitSum', { sum: UI.money(sum) }) + (pr > 0
+        ? ' · ' + (save > 0
+            ? `<strong style="color:var(--ok-600)">${I18N.t('adm.pf.kitSaves', { amount: UI.money(save), pct: Math.round(save / sum * 100) })}</strong>`
+            : I18N.t('adm.pf.kitNoDiscount'))
+        : '');
+      return;
+    }
+    const c = parseFloat(document.getElementById('pfCost').value) || 0;
+    if (pr > 0 && c > 0) {
+      const m = ((pr - c) / pr * 100);
+      el.innerHTML = `${I18N.t('adm.pf.marginLabel')}: <strong style="color:${m >= 40 ? 'var(--ok-600)' : 'var(--warn-600)'}">${m.toFixed(1)}%</strong> · ${UI.money(pr - c)} ${I18N.t('adm.pf.perUnit')}`;
+    } else el.textContent = '';
+  },
+
+  /** Parte variable del formulario: tallas (pieza) o composición (kit). */
+  renderPfDyn() {
+    const d = this.draft;
+    const box = document.getElementById('pfDyn');
+
+    if (d.kit) {
+      const pieces = Store.products.filter(x => !Store.isKit(x) && x.active)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      box.innerHTML = `
+        <div class="pf-section-head">
+          <div>
+            <h3>${I18N.t('adm.pf.componentsTitle')}</h3>
+            <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.pf.componentsSub')}</p>
+          </div>
+          <button class="btn btn-sm" id="pfAddComp" type="button">${I18N.t('adm.pf.addComponent')}</button>
+        </div>
+        <div class="comp-editor">
+          ${d.components.length ? d.components.map((c, i) => {
+            const x = Store.product(c.productId);
+            return `
+            <div class="comp-row">
+              <select class="select" data-comp-p="${i}">
+                ${pieces.map(o => `<option value="${o.id}"${o.id === c.productId ? ' selected' : ''}>${UI.esc(o.name)} — ${UI.money(o.price)} · ${UI.esc(o.stores.map(s => (Store.storeCfg(s) || {}).short).join(' / ') || I18N.t('store.internal'))}</option>`).join('')}
+              </select>
+              <input class="input" type="number" min="1" value="${c.qty}" data-comp-q="${i}" aria-label="${I18N.t('adm.mv.qty')}">
+              <span class="mono tiny muted comp-sub">${x ? UI.money(x.price * c.qty) : ''}</span>
+              <button class="icon-btn" data-comp-del="${i}" type="button" aria-label="${I18N.t('cart.remove')}">
+                <svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>`;
+          }).join('') : `<p class="muted tiny" style="padding:14px">${I18N.t('adm.pf.componentsEmpty')}</p>`}
+        </div>`;
+
+      const firstFree = () => (pieces.find(o => !d.components.some(c => c.productId === o.id)) || pieces[0]);
+      document.getElementById('pfAddComp').onclick = () => {
+        const o = firstFree();
+        if (!o) return;
+        d.components.push({ productId: o.id, qty: 1 });
+        this.renderPfDyn();
+      };
+      box.querySelectorAll('[data-comp-p]').forEach(s => s.onchange = () => { d.components[+s.dataset.compP].productId = s.value; this.renderPfDyn(); });
+      box.querySelectorAll('[data-comp-q]').forEach(s => s.onchange = () => { d.components[+s.dataset.compQ].qty = Math.max(1, parseInt(s.value) || 1); this.renderPfDyn(); });
+      box.querySelectorAll('[data-comp-del]').forEach(b => b.onclick = () => { d.components.splice(+b.dataset.compDel, 1); this.renderPfDyn(); });
+      this.pfSummary();
+      return;
+    }
+
+    box.innerHTML = `
+      <div class="pf-section-head">
+        <div>
+          <h3>${I18N.t('adm.pf.sizesTitle')}</h3>
+          <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.pf.sizesSub')}</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" data-preset="apparel" type="button">${I18N.t('adm.pf.presetApparel')}</button>
+          <button class="btn btn-sm" data-preset="socks" type="button">${I18N.t('adm.pf.presetSocks')}</button>
+          <button class="btn btn-sm" data-preset="one" type="button">${I18N.t('adm.pf.presetOne')}</button>
+        </div>
+      </div>
+      <div class="size-grid">
+        ${SEED.sizeScale.map(s => {
+          const cur = d.sizes[s] || { on: false, stock: 0 };
+          return `
+          <div class="size-cell ${cur.on ? 'on' : ''}">
+            <label title="${UI.esc(UI.sizeTitle(s))}">
+              <input type="checkbox" data-sz="${s}" ${cur.on ? 'checked' : ''}>
+              <span>${UI.esc(UI.sizeLabel(s))}</span>
+            </label>
+            <input class="input" type="number" min="0" data-sz-stock="${s}" value="${cur.stock}" ${cur.on ? '' : 'disabled'} aria-label="${I18N.t('adm.pf.colStock')} ${s}">
+          </div>`;
+        }).join('')}
+      </div>`;
+
+    box.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+      const set = SEED.sizeSets[b.dataset.preset];
+      SEED.sizeScale.forEach(s => {
+        const cur = d.sizes[s] || { on: false, stock: 0 };
+        // Una talla con existencias no se desmarca sola: el inventario no desaparece.
+        d.sizes[s] = { on: set.includes(s) || cur.stock > 0 && cur.on, stock: cur.stock };
+      });
+      this.renderPfDyn();
+    });
+    box.querySelectorAll('[data-sz]').forEach(c => c.onchange = () => {
+      const cur = d.sizes[c.dataset.sz] || { on: false, stock: 0 };
+      d.sizes[c.dataset.sz] = { on: c.checked, stock: cur.stock };
+      this.renderPfDyn();
+    });
+    box.querySelectorAll('[data-sz-stock]').forEach(i => i.onchange = () => {
+      d.sizes[i.dataset.szStock].stock = Math.max(0, parseInt(i.value) || 0);
     });
   },
 
-  saveProductForm(existing) {
-    const name  = document.getElementById('pfName').value.trim();
-    const sku   = document.getElementById('pfSku').value.trim().toUpperCase();
-    const cost  = parseFloat(document.getElementById('pfCost').value) || 0;
-    const price = parseFloat(document.getElementById('pfPrice').value) || 0;
+  saveProductForm() {
+    const d = this.draft;
+    const existing = d.existing;
+    const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const checked = name => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(i => i.value);
+
+    const name = val('pfName');
+    const sku = val('pfSku').toUpperCase().replace(/\s+/g, '-');
+    const price = parseFloat(val('pfPrice')) || 0;
+    const stores = checked('pfStore');
 
     let bad = false;
     const mark = (i, e, cond) => {
       const inp = document.getElementById(i), err = document.getElementById(e);
-      if (cond) { inp.classList.add('error'); err.classList.add('show'); bad = true; }
-      else { inp.classList.remove('error'); err.classList.remove('show'); }
+      if (cond) { inp.classList.add('error'); if (err) err.classList.add('show'); bad = true; }
+      else { inp.classList.remove('error'); if (err) err.classList.remove('show'); }
     };
     mark('pfName', 'pfErrName', !name);
     mark('pfSku', 'pfErrSku', !sku);
-
-    if (price <= 0) { document.getElementById('pfPrice').classList.add('error'); bad = true; }
+    // Un producto que no se vende en ninguna tienda (uso interno) puede no tener precio.
+    mark('pfPrice', null, stores.length > 0 && price <= 0);
     if (bad) { UI.toast('danger', I18N.t('adm.pf.missingData'), I18N.t('adm.pf.missingDataBody')); return; }
 
-    // Autocompleta SKUs vacíos de variante
-    this.draftVariants.forEach(v => {
-      if (!v.sku) {
-        const code = v.color.replace(/[^A-Za-zÁÉÍÓÚÑ]/g, '').slice(0, 3).toUpperCase();
-        v.sku = `${sku}-${code}-${v.size}`;
-      }
-    });
-
-    const dupes = this.draftVariants.map(v => v.sku).filter((s, i, a) => a.indexOf(s) !== i);
-    if (dupes.length) {
-      UI.toast('danger', I18N.t('adm.pf.dupeSku'), I18N.t('adm.pf.dupeSkuBody', { sku: dupes[0] }));
+    if (Store.products.some(x => x.sku === sku && (!existing || x.id !== existing.id))) {
+      UI.toast('danger', I18N.t('adm.pf.dupeSku'), I18N.t('adm.pf.dupeSkuBody', { sku }));
       return;
     }
 
+    const sizes = SEED.sizeScale.filter(s => d.sizes[s] && d.sizes[s].on).map(s => ({ size: s, stock: d.sizes[s].stock }));
+    if (!d.kit && !sizes.length) { UI.toast('danger', I18N.t('adm.pf.missingData'), I18N.t('adm.pf.needSize')); return; }
+    if (d.kit && !d.components.length) { UI.toast('danger', I18N.t('adm.pf.missingData'), I18N.t('adm.pf.needComponent')); return; }
+    if (d.kit && new Set(d.components.map(c => c.productId)).size !== d.components.length) {
+      UI.toast('danger', I18N.t('adm.pf.missingData'), I18N.t('adm.pf.dupeComponent'));
+      return;
+    }
+
+    const cats = checked('pfCat');
     const payload = {
-      name, sku, cost, price,
-      category: document.getElementById('pfCat').value,
-      description: document.getElementById('pfDesc').value.trim(),
-      minStock: parseInt(document.getElementById('pfMin').value) || 0,
+      name, sku, price, stores,
+      kind: d.kit ? 'kit' : val('pfKind'),
+      categories: cats.length ? cats : ['player'],
+      line: val('pfLine'),
+      description: val('pfDesc'),
+      cost: d.kit ? 0 : (parseFloat(val('pfCost')) || 0),
+      minStock: d.kit ? 0 : (parseInt(val('pfMin')) || 0),
       active: document.getElementById('pfActive').checked,
       featured: document.getElementById('pfFeat').checked,
-      tags: existing ? existing.tags : [],
-      variants: this.draftVariants
+      image: d.image,
+      colorHex: existing ? existing.colorHex : '#16181d'
     };
+    if (!existing || existing.image !== d.image) payload.images = d.image ? [d.image] : [];
+    if (d.kit) payload.components = d.components;
+    else payload.sizes = sizes;
+    if (existing) payload.id = existing.id;
 
-    if (existing) {
-      // Los cambios manuales de stock quedan asentados en el libro de movimientos.
-      const before = {};
-      existing.variants.forEach(v => before[v.id] = v.stock);
+    const r = Store.saveProduct(payload);
+    if (!r.ok) { UI.toast('danger', I18N.t('adm.pf.missingData'), r.error || ''); return; }
+    if (!Store.save()) UI.toast('warn', I18N.t('adm.pf.storageTitle'), I18N.t('adm.pf.storageBody'));
 
-      payload.id = existing.id;
-      payload.madeToOrder = existing.madeToOrder;
-      Store.saveProduct(payload);
-
-      this.draftVariants.forEach(v => {
-        const prev = before[v.id];
-        if (prev === undefined) return;
-        const diff = v.stock - prev;
-        if (diff !== 0) {
-          const target = Store.findVariant(v.id);
-          if (target) {
-            target.variant.stock = prev;  // revierte para que el movimiento lo aplique
-            Store.applyMovement({
-              variantId: v.id,
-              type: diff > 0 ? 'entrada' : 'salida',
-              qty: Math.abs(diff),
-              reason: 'Conteo físico (ajuste)',
-              ref: 'EDIT-' + sku
-            });
-          }
-        }
-      });
-
-      UI.closeModal();
-      App.refreshAll();
-      UI.toast('ok', I18N.t('adm.pf.updated'), I18N.t('adm.pf.updatedBody', { name }));
-    } else {
-      const r = Store.saveProduct(payload);
-      UI.closeModal();
-      App.refreshAll();
+    UI.closeModal();
+    App.refreshAll();
+    if (existing) UI.toast('ok', I18N.t('adm.pf.updated'), I18N.t('adm.pf.updatedBody', { name }));
+    else {
+      const count = d.kit ? d.components.length : r.product.variants.length;
       UI.toast('ok', I18N.t('adm.pf.created'),
-        I18N.t('adm.pf.createdBody', { name, count: r.product.variants.length }));
+        I18N.t(d.kit ? 'adm.pf.createdKitBody' : (count === 1 ? 'adm.pf.createdBodyOne' : 'adm.pf.createdBody'), { name, count }));
     }
   },
 
@@ -802,10 +1006,10 @@ const Admin = {
       list = list.filter(m =>
         m.product.toLowerCase().includes(q) || m.sku.toLowerCase().includes(q) ||
         m.ref.toLowerCase().includes(q) || m.user.toLowerCase().includes(q) ||
-        m.reason.toLowerCase().includes(q));
+        UI.reason(m.reason).toLowerCase().includes(q));
     }
 
-    const allReasons = [...new Set(Store.movements.map(m => m.reason))].sort();
+    const allReasons = [...new Set(Store.movements.map(m => m.reason))].sort((a, b) => UI.reason(a).localeCompare(UI.reason(b)));
     const ins  = list.filter(m => m.type === 'entrada').reduce((s, m) => s + m.qty, 0);
     const outs = list.filter(m => m.type === 'salida').reduce((s, m) => s + m.qty, 0);
 
@@ -824,10 +1028,7 @@ const Admin = {
 
     <div class="card">
       <div class="filter-bar">
-        <div class="search-box">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" id="movQ" placeholder="${I18N.t('adm.movements.searchPh')}" value="${UI.esc(f.q)}">
-        </div>
+        ${this.searchBox('movQ', f, I18N.t('adm.movements.searchPh'))}
         <select class="select" id="movType">
           <option value="todos">${I18N.t('adm.movements.allTypes')}</option>
           <option value="entrada"${f.type === 'entrada' ? ' selected' : ''}>${I18N.t('adm.movements.onlyIn')}</option>
@@ -835,7 +1036,7 @@ const Admin = {
         </select>
         <select class="select" id="movReason">
           <option value="todos">${I18N.t('adm.movements.allReasons')}</option>
-          ${allReasons.map(r => `<option value="${UI.esc(r)}"${f.reason === r ? ' selected' : ''}>${UI.esc(r)}</option>`).join('')}
+          ${allReasons.map(r => `<option value="${UI.esc(r)}"${f.reason === r ? ' selected' : ''}>${UI.esc(UI.reason(r))}</option>`).join('')}
         </select>
       </div>
 
@@ -851,13 +1052,13 @@ const Admin = {
             <tbody>
               ${list.slice(0, 120).map(m => `
                 <tr>
-                  <td class="nowrap"><div>${UI.date(m.date)}</div><div class="cell-sub">${new Date(m.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })}</div></td>
-                  <td><div class="cell-main">${UI.esc(m.product)}</div><div class="cell-sub">${UI.esc(m.variant)}</div></td>
+                  <td class="nowrap"><div>${UI.date(m.date)}</div><div class="cell-sub">${UI.time(m.date)}</div></td>
+                  <td><div class="cell-main">${UI.esc(m.product)}</div><div class="cell-sub">${I18N.t('shop.size')} ${UI.esc(UI.sizeLabel(m.variant))}</div></td>
                   <td class="mono tiny">${UI.esc(m.sku)}</td>
                   <td>${m.type === 'entrada'
                         ? `<span class="badge badge-ok">${I18N.t('adm.movements.badgeIn')}</span>`
                         : `<span class="badge badge-danger">${I18N.t('adm.movements.badgeOut')}</span>`}</td>
-                  <td>${UI.esc(m.reason)}</td>
+                  <td>${UI.esc(UI.reason(m.reason))}</td>
                   <td class="mono tiny">${UI.esc(m.ref)}</td>
                   <td class="right"><span class="mov-delta ${m.type === 'entrada' ? 'in' : 'out'}">${m.type === 'entrada' ? '+' : '−'}${m.qty}</span></td>
                   <td class="right"><span class="mov-flow"><span class="from">${m.before}</span><span class="arrow">→</span><span class="to">${m.after}</span></span></td>
@@ -873,18 +1074,11 @@ const Admin = {
   },
 
   movementsBind() {
-    const q = document.getElementById('movQ');
-    q.oninput = () => {
-      this.f.mov.q = q.value.trim().toLowerCase();
-      const pos = q.selectionStart;
-      this.renderPage('movements');
-      const nq = document.getElementById('movQ');
-      nq.focus(); nq.setSelectionRange(pos, pos);
-    };
-    document.getElementById('movType').onchange   = e => { this.f.mov.type = e.target.value; this.renderPage('movements'); };
-    document.getElementById('movReason').onchange = e => { this.f.mov.reason = e.target.value; this.renderPage('movements'); };
-    document.getElementById('movNew').onclick     = () => this.movementForm();
-    document.getElementById('movExport').onclick  = () => {
+    this.bindSearch('movQ', this.f.mov, 'movements');
+    this.bindSelect('movType', this.f.mov, 'type', 'movements');
+    this.bindSelect('movReason', this.f.mov, 'reason', 'movements');
+    document.getElementById('movNew').onclick = () => this.movementForm();
+    document.getElementById('movExport').onclick = () => {
       const lines = [[
         I18N.t('adm.movements.csvDate'), I18N.t('adm.movements.csvSku'), I18N.t('adm.movements.csvProduct'),
         I18N.t('adm.movements.csvVariant'), I18N.t('adm.movements.csvType'), I18N.t('adm.movements.csvQty'),
@@ -892,15 +1086,240 @@ const Admin = {
         I18N.t('adm.movements.csvAfter'), I18N.t('adm.movements.csvUser')
       ].join(',')];
       Store.movements.forEach(m => lines.push([
-        m.date, m.sku, `"${m.product}"`, `"${m.variant}"`, m.type, m.qty,
-        `"${m.reason}"`, m.ref, m.before, m.after, `"${m.user}"`
+        m.date, m.sku, `"${m.product}"`, m.variant, m.type, m.qty,
+        `"${UI.reason(m.reason)}"`, m.ref, m.before, m.after, `"${m.user}"`
       ].join(',')));
-      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'movimientos_soccercage.csv';
-      a.click();
+      UI.download('movements_soccercage.csv', lines.join('\n'));
       UI.toast('ok', I18N.t('adm.movements.exportDone'), I18N.t('adm.movements.exportDoneBody'));
+    };
+  },
+
+  /* ============================================================
+     ENTREGAS — salidas que no son venta
+     Academia: tallas reportadas en PlayMetrics. Clínica: camiseta incluida.
+     ============================================================ */
+  deliveryState(e) {
+    if (e.status === 'entregado') return 'done';
+    const plan = Store.deliveryPlan(e.id);
+    if (!plan) return 'nosize';
+    if (plan.lines.some(l => !l.size)) return 'nosize';
+    return plan.ok ? 'ready' : 'nostock';
+  },
+
+  deliveriesHTML() {
+    const f = this.f.del;
+    const all = Store.roster.map(e => ({ e, state: this.deliveryState(e) }));
+
+    let list = all;
+    if (f.program !== 'todos') list = list.filter(x => x.e.program === f.program);
+    if (f.status !== 'todos') list = list.filter(x => x.state === f.status);
+    if (f.q) list = list.filter(x =>
+      x.e.player.toLowerCase().includes(f.q) || (x.e.email || '').toLowerCase().includes(f.q) || (x.e.team || '').toLowerCase().includes(f.q));
+
+    const rank = { nostock: 0, nosize: 1, ready: 2, done: 3 };
+    list = list.slice().sort((a, b) => rank[a.state] - rank[b.state] || a.e.player.localeCompare(b.e.player));
+
+    const count = s => all.filter(x => x.state === s).length;
+    const stateBadge = (x) => {
+      if (x.state === 'done') return `<span class="badge badge-ok"><span class="dot"></span>${I18N.t('adm.del.stDone')}</span><div class="cell-sub mono">${UI.esc(x.e.ref)} · ${UI.date(x.e.deliveredAt)}</div>`;
+      if (x.state === 'ready') return `<span class="badge badge-info"><span class="dot"></span>${I18N.t('adm.del.stReady')}</span>`;
+      if (x.state === 'nosize') return `<span class="badge badge-warn"><span class="dot"></span>${I18N.t('adm.del.stNoSize')}</span>`;
+      return `<span class="badge badge-danger"><span class="dot"></span>${I18N.t('adm.del.stNoStock')}</span>`;
+    };
+
+    return this.head(
+      I18N.t('adm.del.title'),
+      I18N.t('adm.del.sub'),
+      `<button class="btn btn-sm" id="delTemplate">${I18N.t('adm.del.templateBtn')}</button>
+       <button class="btn btn-primary btn-sm" id="delImport">${I18N.t('adm.del.importBtn')}</button>`
+    ) + `
+    <div class="kpi-grid">
+      <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.del.kpiReady')}</div><div class="kpi-value">${count('ready')}</div><div class="kpi-foot">${I18N.t('adm.del.kpiReadyFoot')}</div></div>
+      <div class="kpi ${count('nosize') ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.del.kpiNoSize')}</div><div class="kpi-value">${count('nosize')}</div><div class="kpi-foot">${I18N.t('adm.del.kpiNoSizeFoot')}</div></div>
+      <div class="kpi ${count('nostock') ? 'kpi-critico' : ''}"><div class="kpi-label">${I18N.t('adm.del.kpiNoStock')}</div><div class="kpi-value">${count('nostock')}</div><div class="kpi-foot">${I18N.t('adm.del.kpiNoStockFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.del.kpiDone')}</div><div class="kpi-value">${count('done')}</div><div class="kpi-foot">${I18N.t('adm.del.kpiDoneFoot', { n: all.length })}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="filter-bar">
+        ${this.searchBox('delQ', f, I18N.t('adm.del.searchPh'))}
+        <select class="select" id="delProgram">
+          <option value="todos">${I18N.t('adm.del.allPrograms')}</option>
+          ${Store.programs.map(p => `<option value="${p.id}"${f.program === p.id ? ' selected' : ''}>${I18N.t('program.' + p.id)}</option>`).join('')}
+        </select>
+        <select class="select" id="delStatus">
+          <option value="todos">${I18N.t('adm.del.allStatuses')}</option>
+          ${[['ready', 'adm.del.stReady'], ['nosize', 'adm.del.stNoSize'], ['nostock', 'adm.del.stNoStock'], ['done', 'adm.del.stDone']]
+            .map(([v, k]) => `<option value="${v}"${f.status === v ? ' selected' : ''}>${I18N.t(k)}</option>`).join('')}
+        </select>
+      </div>
+
+      <div class="card-body flush">
+        ${list.length ? `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr>
+              <th>${I18N.t('adm.del.colPlayer')}</th><th>${I18N.t('adm.del.colGuardian')}</th><th>${I18N.t('adm.del.colProgram')}</th>
+              <th>${I18N.t('adm.del.colPackage')}</th><th>${I18N.t('adm.del.colSize')}</th><th>${I18N.t('adm.del.colStatus')}</th>
+              <th class="right">${I18N.t('adm.del.colActions')}</th>
+            </tr></thead>
+            <tbody>
+              ${list.map(x => {
+                const e = x.e;
+                const prog = Store.program(e.program);
+                const pkg = Store.product(prog.packages[e.role] || prog.packages.player);
+                const sizeCell = e.size
+                  ? `<b>${UI.esc(e.size)}</b>${e.sockSize ? ` <span class="muted tiny">· ${I18N.t('adm.del.socks')} ${UI.esc(e.sockSize)}</span>` : ''}`
+                  : (e.status === 'entregado'
+                      ? UI.esc((e.items || []).map(i => i.size).join(' / '))
+                      : `<select class="select select-sm" data-set-size="${e.id}" aria-label="${I18N.t('shop.size')}">
+                          <option value="">${I18N.t('adm.del.pickSize')}</option>
+                          ${SEED.sizeSets.apparel.map(s => `<option>${s}</option>`).join('')}
+                        </select>`);
+                return `<tr>
+                  <td><div class="cell-main">${UI.esc(e.player)}</div><div class="cell-sub">${UI.esc(e.team || '—')} · ${I18N.t('cat.' + (e.role === 'goalkeeper' ? 'goalkeeper' : 'player'))}</div></td>
+                  <td class="tiny">${UI.esc(e.email || '—')}</td>
+                  <td><span class="badge badge-neutral">${I18N.t('program.' + e.program)}</span><div class="cell-sub">${UI.esc(prog.source)}</div></td>
+                  <td>${pkg ? UI.esc(pkg.name) : '—'}</td>
+                  <td class="nowrap">${sizeCell}</td>
+                  <td>${stateBadge(x)}</td>
+                  <td class="right nowrap">
+                    ${e.status === 'entregado'
+                      ? `<button class="btn btn-sm btn-ghost" data-undo="${e.id}">${I18N.t('adm.del.undoBtn')}</button>`
+                      : `<button class="btn btn-sm ${x.state === 'ready' ? 'btn-primary' : ''}" data-deliver="${e.id}">${I18N.t('adm.del.deliverBtn')}</button>`}
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>` : UI.empty(I18N.t('adm.del.emptyTitle'), I18N.t('adm.del.emptyBody'))}
+      </div>
+    </div>`;
+  },
+
+  deliveriesBind() {
+    this.bindSearch('delQ', this.f.del, 'deliveries');
+    this.bindSelect('delProgram', this.f.del, 'program', 'deliveries');
+    this.bindSelect('delStatus', this.f.del, 'status', 'deliveries');
+
+    document.getElementById('delTemplate').onclick = () => {
+      UI.download('playmetrics_roster_template.csv',
+        'player,guardian_email,team,role,jersey_size,sock_size\nJohn Doe,parent@email.com,U10 Blue,player,YM,S\nJane Doe,parent2@email.com,U12 Red,goalkeeper,YL,M');
+    };
+    document.getElementById('delImport').onclick = () => this.importForm();
+
+    document.querySelectorAll('[data-set-size]').forEach(s => s.onchange = () => {
+      if (!s.value) return;
+      Store.updateRoster(s.dataset.setSize, { size: s.value });
+      this.renderPage('deliveries');
+      UI.toast('ok', I18N.t('adm.del.sizeSaved'), I18N.t('adm.del.sizeSavedBody', { size: s.value }));
+    });
+    document.querySelectorAll('[data-deliver]').forEach(b => b.onclick = () => this.deliverForm(b.dataset.deliver));
+    document.querySelectorAll('[data-undo]').forEach(b => b.onclick = () => {
+      const e = Store.rosterEntry(b.dataset.undo);
+      UI.confirm(I18N.t('adm.del.undoTitle'), I18N.t('adm.del.undoBody', { player: `<strong>${UI.esc(e.player)}</strong>`, ref: UI.esc(e.ref) }), () => {
+        Store.undoDelivery(e.id);
+        App.refreshAll();
+        UI.toast('ok', I18N.t('adm.del.undoneTitle'), I18N.t('adm.del.undoneBody'));
+      }, true);
+    });
+  },
+
+  /** Confirmación de entrega: pieza por pieza, con la talla y el stock a la vista. */
+  deliverForm(entryId, overrides) {
+    overrides = overrides || {};
+    const plan = Store.deliveryPlan(entryId, overrides);
+    if (!plan) return;
+    const e = plan.entry;
+
+    UI.modal(`
+      <div class="modal-head">
+        <div>
+          <h2>${I18N.t('adm.del.formTitle', { player: UI.esc(e.player) })}</h2>
+          <p class="muted tiny" style="margin-top:2px">${I18N.t('program.' + e.program)} · ${UI.esc(plan.package.name)}</p>
+        </div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.del.formIntro')}</p>
+        <div class="kit-rows">
+          ${plan.lines.map(l => {
+            const one = l.product.variants.length === 1 && l.product.variants[0].size === 'U';
+            return `
+            <div class="kit-row ${l.ok ? '' : 'bad'}">
+              ${UI.thumb(l.product)}
+              <div class="kit-row-name"><span class="q">${l.qty}×</span> ${UI.esc(l.product.name)}
+                <div class="cell-sub">${l.variant ? I18N.t('adm.del.inStock', { n: l.available }) : I18N.t('adm.del.needsSize')}</div>
+              </div>
+              ${one ? `<span class="muted tiny">${I18N.t('size.one')}</span>` : `
+              <select class="select" data-ov="${l.product.id}">
+                <option value="">${I18N.t('kit.pick')}</option>
+                ${l.product.variants.map(v => `<option value="${v.size}"${l.size === v.size ? ' selected' : ''}>${v.size} — ${Store.available(v)}</option>`).join('')}
+              </select>`}
+            </div>`;
+          }).join('')}
+        </div>
+        ${plan.ok ? '' : `<div class="alert alert-danger" style="margin:14px 0 0">${UI.infoIcon()}<div><div class="alert-title">${I18N.t('adm.del.blockedTitle')}</div><div class="alert-body">${I18N.t('adm.del.blockedBody')}</div></div></div>`}
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="delGo" ${plan.ok ? '' : 'disabled'}>${I18N.t('adm.del.confirmBtn')}</button>
+      </div>`);
+
+    document.querySelectorAll('[data-ov]').forEach(s => s.onchange = () => {
+      overrides[s.dataset.ov] = s.value;
+      this.deliverForm(entryId, overrides);
+    });
+
+    document.getElementById('delGo').onclick = () => {
+      const r = Store.deliver(entryId, overrides);
+      if (!r.ok) { UI.toast('danger', I18N.t('adm.del.blockedTitle'), r.error); return; }
+      UI.closeModal();
+      App.refreshAll();
+      UI.toast('ok', I18N.t('adm.del.doneTitle'), I18N.t('adm.del.doneBody', { player: e.player, ref: r.ref }));
+    };
+  },
+
+  importForm() {
+    UI.modal(`
+      <div class="modal-head"><h2>${I18N.t('adm.del.importTitle')}</h2>${UI.closeBtn()}</div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.del.importIntro')}</p>
+        <div class="field">
+          <label for="imProgram">${I18N.t('adm.del.colProgram')}</label>
+          <select class="select" id="imProgram">
+            ${Store.programs.map(p => `<option value="${p.id}">${I18N.t('program.' + p.id)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field">
+          <label for="imFile">${I18N.t('adm.del.importFile')}</label>
+          <input class="input" type="file" id="imFile" accept=".csv,text/csv,text/plain">
+        </div>
+        <div class="field">
+          <label for="imText">${I18N.t('adm.del.importPaste')}</label>
+          <textarea class="input mono" id="imText" rows="6" placeholder="player,guardian_email,team,role,jersey_size,sock_size"></textarea>
+          <div class="hint">${I18N.t('adm.del.importHint')}</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="imGo">${I18N.t('adm.del.importGo')}</button>
+      </div>`);
+
+    document.getElementById('imFile').onchange = ev => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = () => { document.getElementById('imText').value = r.result; };
+      r.readAsText(file);
+    };
+
+    document.getElementById('imGo').onclick = () => {
+      const r = Store.importRoster(document.getElementById('imText').value, document.getElementById('imProgram').value);
+      if (!r.added && !r.skipped) { UI.toast('warn', I18N.t('adm.del.importEmpty'), I18N.t('adm.del.importEmptyBody')); return; }
+      UI.closeModal();
+      App.refreshAll();
+      UI.toast('ok', I18N.t('adm.del.importDone'), I18N.t('adm.del.importDoneBody', { added: r.added, skipped: r.skipped }));
     };
   },
 
@@ -911,37 +1330,34 @@ const Admin = {
     const f = this.f.ord;
     let list = Store.orders.slice();
 
+    if (f.store !== 'todos') list = list.filter(o => o.storeId === f.store);
     if (f.status !== 'todos') list = list.filter(o => o.status === f.status);
     if (f.q) {
-      const q = f.q;
       list = list.filter(o => {
-        const c = Store.customers.find(x => x.id === o.customerId);
-        return o.number.toLowerCase().includes(q) || (c && c.name.toLowerCase().includes(q));
+        const c = this.customerOf(o);
+        return o.number.toLowerCase().includes(f.q) ||
+          (c && (c.name.toLowerCase().includes(f.q) || c.email.toLowerCase().includes(f.q))) ||
+          o.items.some(i => (i.player || '').toLowerCase().includes(f.q));
       });
     }
 
-    const counts = {
-      pendiente:  Store.orders.filter(o => o.status === 'pendiente').length,
-      procesando: Store.orders.filter(o => o.status === 'procesando').length,
-      enviado:    Store.orders.filter(o => o.status === 'enviado').length,
-      completado: Store.orders.filter(o => o.status === 'completado').length
-    };
-    const revenue = Store.orders.filter(o => o.paymentStatus === 'pagado').reduce((s, o) => s + o.total, 0);
+    const count = s => Store.orders.filter(o => o.status === s).length;
+    const paid = Store.orders.filter(o => o.paymentStatus === 'pagado');
+    const revenue = paid.reduce((s, o) => s + o.total, 0);
+    const tax = paid.reduce((s, o) => s + (o.tax || 0), 0);
 
     return this.head(I18N.t('adm.orders.title'), I18N.t('adm.orders.sub')) + `
     <div class="kpi-grid">
-      <div class="kpi ${counts.pendiente ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.orders.kpiPending')}</div><div class="kpi-value">${counts.pendiente}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiPendingFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.orders.kpiProcessing')}</div><div class="kpi-value">${counts.procesando}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiProcessingFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.orders.kpiShipped')}</div><div class="kpi-value">${counts.enviado}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiShippedFoot')}</div></div>
-      <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.orders.kpiRevenue')}</div><div class="kpi-value">${UI.money0(revenue)}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiRevenueFoot', { n: counts.completado })}</div></div>
+      <div class="kpi ${count('pendiente') ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.orders.kpiPending')}</div><div class="kpi-value">${count('pendiente')}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiPendingFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.orders.kpiProcessing')}</div><div class="kpi-value">${count('procesando')}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiProcessingFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.orders.kpiShipped')}</div><div class="kpi-value">${count('enviado')}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiShippedFoot')}</div></div>
+      <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.orders.kpiRevenue')}</div><div class="kpi-value">${UI.money0(revenue)}</div><div class="kpi-foot">${I18N.t('adm.orders.kpiRevenueFoot', { tax: UI.money(tax) })}</div></div>
     </div>
 
     <div class="card">
       <div class="filter-bar">
-        <div class="search-box">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" id="ordQ" placeholder="${I18N.t('adm.orders.searchPh')}" value="${UI.esc(f.q)}">
-        </div>
+        ${this.searchBox('ordQ', f, I18N.t('adm.orders.searchPh'))}
+        <select class="select" id="ordStore">${this.storeOptions(f.store)}</select>
         <select class="select" id="ordStatus">
           <option value="todos">${I18N.t('adm.orders.allStatuses')}</option>
           ${['pendiente', 'procesando', 'enviado', 'completado', 'cancelado'].map(s =>
@@ -954,21 +1370,27 @@ const Admin = {
         <div class="table-wrap">
           <table class="data">
             <thead><tr>
-              <th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.orders.colCustomer')}</th><th>${I18N.t('adm.orders.colDate')}</th><th class="right">${I18N.t('adm.orders.colItems')}</th>
+              <th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.orders.colCustomer')}</th><th>${I18N.t('adm.orders.colDate')}</th>
+              <th>${I18N.t('adm.orders.colItems')}</th><th>${I18N.t('adm.orders.colDelivery')}</th>
               <th class="right">${I18N.t('adm.orders.colTotal')}</th><th>${I18N.t('adm.orders.colPayment')}</th><th>${I18N.t('adm.orders.colStatus')}</th><th class="right">${I18N.t('adm.orders.colActions')}</th>
             </tr></thead>
             <tbody>
               ${list.map(o => {
-                const c = Store.customers.find(x => x.id === o.customerId);
-                const units = o.items.reduce((s, i) => s + i.qty, 0);
+                const c = this.customerOf(o);
+                const kits = o.items.filter(i => i.kind === 'kit').reduce((s, i) => s + i.qty, 0);
+                const singles = o.items.filter(i => i.kind !== 'kit').reduce((s, i) => s + i.qty, 0);
+                const parts = [];
+                if (kits) parts.push(I18N.t(kits === 1 ? 'adm.orders.kitOne' : 'adm.orders.kitMany', { n: kits }));
+                if (singles) parts.push(I18N.t(singles === 1 ? 'adm.orders.pieceOne' : 'adm.orders.pieceMany', { n: singles }));
                 return `<tr>
-                  <td><div class="cell-main mono">${o.number}</div><div class="cell-sub">${UI.esc(o.paymentMethod)}</div></td>
-                  <td><div class="cell-main">${UI.esc(c ? c.name : '—')}</div><div class="cell-sub">${UI.esc(c ? c.city : '')}</div></td>
-                  <td class="nowrap">${UI.date(o.date)}<div class="cell-sub">${new Date(o.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })}</div></td>
-                  <td class="right">${I18N.t('adm.orders.units', { n: units })}<div class="cell-sub">${I18N.t(o.items.length === 1 ? 'adm.orders.lineItem' : 'adm.orders.lineItemPlural', { n: o.items.length })}</div></td>
-                  <td class="right"><strong>${UI.money(o.total)}</strong></td>
+                  <td><div class="cell-main mono">${o.number}</div><div class="cell-sub">${UI.esc(UI.storeName(o.storeId))}</div></td>
+                  <td><div class="cell-main">${UI.esc(c ? c.name : '—')}</div><div class="cell-sub">${UI.esc(c ? c.email : '')}</div></td>
+                  <td class="nowrap">${UI.date(o.date)}<div class="cell-sub">${UI.time(o.date)}</div></td>
+                  <td>${parts.join(' + ')}${kits ? `<div class="cell-sub">${UI.esc(o.items.filter(i => i.kind === 'kit' && i.player).map(i => i.player).join(', '))}</div>` : ''}</td>
+                  <td>${UI.fulfillBadge(o.fulfillment)}</td>
+                  <td class="right"><strong>${UI.money(o.total)}</strong><div class="cell-sub">${I18N.t('adm.orders.taxIncl', { tax: UI.money(o.tax || 0) })}</div></td>
                   <td>${UI.payBadge(o.paymentStatus)}</td>
-                  <td>${UI.orderBadge(o.status)}</td>
+                  <td>${UI.orderBadge(o.status, o.fulfillment)}</td>
                   <td class="right"><button class="btn btn-sm" data-order="${o.id}">${I18N.t('adm.orders.viewDetail')}</button></td>
                 </tr>`;
               }).join('')}
@@ -980,46 +1402,43 @@ const Admin = {
   },
 
   ordersBind() {
-    const q = document.getElementById('ordQ');
-    q.oninput = () => {
-      this.f.ord.q = q.value.trim().toLowerCase();
-      const pos = q.selectionStart;
-      this.renderPage('orders');
-      const nq = document.getElementById('ordQ');
-      nq.focus(); nq.setSelectionRange(pos, pos);
-    };
-    document.getElementById('ordStatus').onchange = e => { this.f.ord.status = e.target.value; this.renderPage('orders'); };
+    this.bindSearch('ordQ', this.f.ord, 'orders');
+    this.bindSelect('ordStatus', this.f.ord, 'status', 'orders');
+    this.bindSelect('ordStore', this.f.ord, 'store', 'orders');
     document.querySelectorAll('[data-order]').forEach(b => b.onclick = () => this.orderDetail(b.dataset.order));
   },
 
   orderDetail(id) {
     const o = Store.orders.find(x => x.id === id);
     if (!o) return;
-    const c = Store.customers.find(x => x.id === o.customerId);
+    const c = this.customerOf(o);
     const related = Store.movements.filter(m => m.ref === o.number);
+    const pickup = o.fulfillment === 'pickup';
+    const a = o.address;
 
     const flow = ['pendiente', 'procesando', 'enviado', 'completado'];
     const idx = flow.indexOf(o.status);
+    const label = s => UI.orderStatusLabel(s, o.fulfillment);
 
     UI.modal(`
       <div class="modal-head">
         <div>
           <h2>${I18N.t('adm.orders.detail.title', { number: o.number })}</h2>
-          <p class="muted tiny" style="margin-top:3px">${UI.date(o.date, true)} · ${UI.esc(o.paymentMethod)}</p>
+          <p class="muted tiny" style="margin-top:3px">${UI.esc(UI.storeName(o.storeId))} · ${UI.date(o.date, true)} · ${UI.esc(o.paymentMethod)}</p>
         </div>
-        <button class="icon-btn" onclick="UI.closeModal()" aria-label="${I18N.t('adm.alerts.close')}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+        ${UI.closeBtn()}
       </div>
 
       <div class="modal-body">
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-          ${UI.orderBadge(o.status)} ${UI.payBadge(o.paymentStatus)}
+          ${UI.orderBadge(o.status, o.fulfillment)} ${UI.payBadge(o.paymentStatus)} ${UI.fulfillBadge(o.fulfillment)}
         </div>
 
         ${o.status !== 'cancelado' ? `
         <div class="steps" style="margin-bottom:20px">
           ${flow.map((s, i) => `
             <div class="step ${i < idx ? 'done' : ''} ${i === idx ? 'active' : ''}">
-              <span class="n">${i < idx ? '✓' : i + 1}</span> ${I18N.t('adm.orders.status.' + s)}
+              <span class="n">${i < idx ? '✓' : i + 1}</span> ${label(s)}
             </div>${i < flow.length - 1 ? '<div class="step-line"></div>' : ''}`).join('')}
         </div>` : `
         <div class="alert alert-danger">
@@ -1033,13 +1452,15 @@ const Admin = {
             <div class="kv"><span class="k">${I18N.t('adm.orders.detail.name')}</span><span class="v">${UI.esc(c ? c.name : '—')}</span></div>
             <div class="kv"><span class="k">${I18N.t('adm.orders.detail.email')}</span><span class="v">${UI.esc(c ? c.email : '—')}</span></div>
             <div class="kv"><span class="k">${I18N.t('adm.orders.detail.phone')}</span><span class="v">${UI.esc(c ? c.phone : '—')}</span></div>
-            <div class="kv"><span class="k">${I18N.t('adm.orders.detail.city')}</span><span class="v">${UI.esc(c ? c.city : '—')}</span></div>
+            <div class="kv"><span class="k">${I18N.t('adm.orders.detail.delivery')}</span><span class="v" style="text-align:right">${pickup
+              ? I18N.t('fulfill.pickup.' + (I18N.has('fulfill.pickup.' + o.storeId) ? o.storeId : 'generic'))
+              : UI.esc(a ? [a.line, a.city, a.state + ' ' + a.zip].join(', ') : '—') + ' · USPS'}</span></div>
           </div>
           <div>
             <h3 style="margin-bottom:10px">${I18N.t('adm.orders.detail.amount')}</h3>
             <div class="kv"><span class="k">${I18N.t('adm.orders.detail.subtotal')}</span><span class="v">${UI.money(o.subtotal)}</span></div>
-            <div class="kv"><span class="k">${I18N.t('adm.orders.detail.shipping')}</span><span class="v">${o.shipping ? UI.money(o.shipping) : I18N.t('adm.orders.detail.free')}</span></div>
-            <div class="kv"><span class="k">${I18N.t('adm.orders.detail.tax')}</span><span class="v">${UI.money(o.tax || 0)}</span></div>
+            <div class="kv"><span class="k">${I18N.t('cart.tax', { tax: UI.pct(o.taxRate) })}</span><span class="v">${UI.money(o.tax || 0)}</span></div>
+            <div class="kv"><span class="k">${I18N.t('adm.orders.detail.shipping')}</span><span class="v">${o.shipping ? UI.money(o.shipping) : I18N.t('fulfill.noShipping')}</span></div>
             <div class="kv" style="font-size:16px"><span class="k"><b>${I18N.t('adm.orders.detail.total')}</b></span><span class="v">${UI.money(o.total)}</span></div>
           </div>
         </div>
@@ -1051,12 +1472,19 @@ const Admin = {
             <tbody>
               ${o.items.map(i => `
                 <tr>
-                  <td><div class="cell-main">${UI.esc(i.name)}</div><div class="cell-sub">${UI.esc(i.variant)}</div></td>
+                  <td><div class="cell-main">${UI.esc(i.name)}${i.kind === 'kit' ? ` <span class="badge badge-gold">${I18N.t('kind.kit')}</span>` : ''}</div>
+                      <div class="cell-sub">${i.kind === 'kit' ? (i.player ? I18N.t('adm.orders.detail.player', { name: UI.esc(i.player) }) : '') : I18N.t('shop.size') + ' ' + UI.esc(UI.sizeLabel(i.size))}</div></td>
                   <td class="mono tiny">${UI.esc(i.sku)}</td>
                   <td class="right">${i.qty}</td>
                   <td class="right mono">${UI.money(i.price)}</td>
                   <td class="right mono"><strong>${UI.money(i.price * i.qty)}</strong></td>
-                </tr>`).join('')}
+                </tr>
+                ${i.kind === 'kit' ? i.components.map(k => `
+                <tr class="sub-row">
+                  <td><div class="cell-sub">↳ ${UI.esc(k.name)} · ${I18N.t('shop.size')} <b>${UI.esc(UI.sizeLabel(k.size))}</b></div></td>
+                  <td class="mono tiny muted">${UI.esc(k.sku)}</td>
+                  <td class="right muted">${k.qty * i.qty}</td><td></td><td></td>
+                </tr>`).join('') : ''}`).join('')}
             </tbody>
           </table>
         </div>
@@ -1067,7 +1495,7 @@ const Admin = {
           <div class="trace-title">${I18N.t('adm.orders.detail.generatedMovements')}</div>
           ${related.map(m => `
             <div class="trace-line">
-              <span>${UI.esc(m.sku)}<br><span class="muted tiny">${UI.esc(m.reason)} · ${UI.esc(m.user)}</span></span>
+              <span>${UI.esc(m.sku)}<br><span class="muted tiny">${UI.esc(UI.reason(m.reason))} · ${UI.esc(m.user)}</span></span>
               <span class="nowrap"><span class="mono muted">${m.before}</span> → <b class="mono">${m.after}</b>
                 <span class="trace-delta" style="color:${m.type === 'entrada' ? 'var(--ok-600)' : 'var(--danger-600)'}">(${m.type === 'entrada' ? '+' : '−'}${m.qty})</span></span>
             </div>`).join('')}
@@ -1075,10 +1503,10 @@ const Admin = {
       </div>
 
       <div class="modal-foot">
-        <button class="btn" onclick="UI.closeModal()">${I18N.t('adm.alerts.close')}</button>
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.close')}</button>
         ${o.status !== 'cancelado' ? `<button class="btn btn-danger" id="odCancel">${I18N.t('adm.orders.detail.cancelOrder')}</button>` : ''}
         ${idx >= 0 && idx < flow.length - 1
-          ? `<button class="btn btn-primary" id="odNext">${I18N.t('adm.orders.detail.markAs', { status: I18N.t('adm.orders.status.' + flow[idx + 1]) })}</button>` : ''}
+          ? `<button class="btn btn-primary" id="odNext">${I18N.t('adm.orders.detail.markAs', { status: label(flow[idx + 1]) })}</button>` : ''}
       </div>`, 'wide');
 
     const next = document.getElementById('odNext');
@@ -1086,7 +1514,7 @@ const Admin = {
       Store.setOrderStatus(o.id, flow[idx + 1]);
       UI.closeModal();
       App.refreshAll();
-      UI.toast('ok', I18N.t('adm.orders.detail.statusUpdated'), I18N.t('adm.orders.detail.statusUpdatedBody', { number: o.number, status: I18N.t('adm.orders.status.' + flow[idx + 1]) }));
+      UI.toast('ok', I18N.t('adm.orders.detail.statusUpdated'), I18N.t('adm.orders.detail.statusUpdatedBody', { number: o.number, status: label(flow[idx + 1]) }));
     };
 
     const cancel = document.getElementById('odCancel');
@@ -1102,52 +1530,57 @@ const Admin = {
   },
 
   /* ============================================================
-     CLIENTES
+     CLIENTES — cuentas y estado del kit por tienda
      ============================================================ */
+  kitCell(c) {
+    return Store.stores.map(s => {
+      const src = Store.kitSource(c, s.id);
+      return src
+        ? `<span class="tag tag-ok" title="${UI.esc(I18N.t('adm.customers.kitVia.' + src.type, { ref: src.ref || '' }))}">${UI.esc(s.short)} ✓</span>`
+        : `<span class="tag tag-off">${UI.esc(s.short)}</span>`;
+    }).join('');
+  },
+
   customersHTML() {
-    const q = this.f.cust.q;
+    const f = this.f.cust;
     let list = Store.customers.slice();
-    if (q) list = list.filter(c =>
-      c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.city.toLowerCase().includes(q));
+    if (f.q) list = list.filter(c =>
+      c.name.toLowerCase().includes(f.q) || c.email.toLowerCase().includes(f.q) || (c.city || '').toLowerCase().includes(f.q));
     list.sort((a, b) => b.spent - a.spent);
 
     const total = Store.customers.reduce((s, c) => s + c.spent, 0);
-    const clubs = Store.customers.filter(c => c.type !== 'Particular').length;
+    const withKit = Store.customers.filter(c => Store.stores.some(s => Store.hasKit(c, s.id))).length;
 
     return this.head(I18N.t('adm.customers.title'), I18N.t('adm.customers.sub')) + `
     <div class="kpi-grid">
-      <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.customers.kpiCustomers')}</div><div class="kpi-value">${Store.customers.length}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiCustomersFoot', { n: clubs })}</div></div>
+      <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.customers.kpiCustomers')}</div><div class="kpi-value">${Store.customers.length}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiCustomersFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.customers.kpiKit')}</div><div class="kpi-value">${withKit}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiKitFoot', { n: Store.customers.length - withKit })}</div></div>
       <div class="kpi"><div class="kpi-label">${I18N.t('adm.customers.kpiRevenue')}</div><div class="kpi-value">${UI.money0(total)}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiRevenueFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.customers.kpiAvg')}</div><div class="kpi-value">${UI.money0(Store.customers.length ? total / Store.customers.length : 0)}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiAvgFoot')}</div></div>
       <div class="kpi"><div class="kpi-label">${I18N.t('adm.customers.kpiOrders')}</div><div class="kpi-value">${Store.customers.reduce((s, c) => s + c.orders, 0)}</div><div class="kpi-foot">${I18N.t('adm.customers.kpiOrdersFoot')}</div></div>
     </div>
 
     <div class="card">
-      <div class="filter-bar">
-        <div class="search-box">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="input" id="custQ" placeholder="${I18N.t('adm.customers.searchPh')}" value="${UI.esc(q)}">
-        </div>
-      </div>
+      <div class="filter-bar">${this.searchBox('custQ', f, I18N.t('adm.customers.searchPh'))}</div>
       <div class="card-body flush">
         ${list.length ? `
         <div class="table-wrap">
           <table class="data">
-            <thead><tr><th>${I18N.t('adm.customers.colCustomer')}</th><th>${I18N.t('adm.customers.colContact')}</th><th>${I18N.t('adm.customers.colType')}</th><th class="right">${I18N.t('adm.customers.colOrders')}</th><th class="right">${I18N.t('adm.customers.colTotalSpent')}</th><th>${I18N.t('adm.customers.colSince')}</th></tr></thead>
+            <thead><tr><th>${I18N.t('adm.customers.colCustomer')}</th><th>${I18N.t('adm.customers.colContact')}</th><th>${I18N.t('adm.customers.colKit')}</th><th class="right">${I18N.t('adm.customers.colOrders')}</th><th class="right">${I18N.t('adm.customers.colTotalSpent')}</th><th>${I18N.t('adm.customers.colSince')}</th><th class="right">${I18N.t('adm.orders.colActions')}</th></tr></thead>
             <tbody>
               ${list.map(c => `
                 <tr>
                   <td>
                     <div class="cell-flex">
-                      <div class="thumb" style="background:var(--ink-800)">${UI.esc(c.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
-                      <div><div class="cell-main">${UI.esc(c.name)}</div><div class="cell-sub">${UI.esc(c.city)}</div></div>
+                      <div class="thumb" style="background:var(--ink-800)">${UI.esc(c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase())}</div>
+                      <div><div class="cell-main">${UI.esc(c.name)}</div><div class="cell-sub">${UI.esc(c.city || '—')}</div></div>
                     </div>
                   </td>
                   <td><div class="tiny">${UI.esc(c.email)}</div><div class="cell-sub">${UI.esc(c.phone)}</div></td>
-                  <td><span class="badge ${c.type === 'Particular' ? 'badge-neutral' : 'badge-info'}">${UI.esc(c.type)}</span></td>
+                  <td><div class="tags">${this.kitCell(c)}</div></td>
                   <td class="right">${c.orders}</td>
                   <td class="right"><strong>${UI.money(c.spent)}</strong></td>
                   <td class="muted tiny">${UI.date(c.since)}</td>
+                  <td class="right"><button class="btn btn-sm" data-kit-of="${c.id}">${I18N.t('adm.customers.kitBtn')}</button></td>
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -1157,14 +1590,180 @@ const Admin = {
   },
 
   customersBind() {
-    const q = document.getElementById('custQ');
-    q.oninput = () => {
-      this.f.cust.q = q.value.trim().toLowerCase();
-      const pos = q.selectionStart;
-      this.renderPage('customers');
-      const nq = document.getElementById('custQ');
-      nq.focus(); nq.setSelectionRange(pos, pos);
+    this.bindSearch('custQ', this.f.cust, 'customers');
+    document.querySelectorAll('[data-kit-of]').forEach(b => b.onclick = () => this.kitForm(b.dataset.kitOf));
+  },
+
+  /** Marca a mano que una familia ya tiene el kit (lo compró antes de que existiera esta tienda). */
+  kitForm(customerId) {
+    const c = Store.customers.find(x => x.id === customerId);
+    if (!c) return;
+    UI.modal(`
+      <div class="modal-head">
+        <div><h2>${I18N.t('adm.customers.kitTitle')}</h2><p class="muted tiny" style="margin-top:2px">${UI.esc(c.name)} · ${UI.esc(c.email)}</p></div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.customers.kitIntro')}</p>
+        ${Store.stores.map(s => {
+          const src = Store.kitSource(c, s.id);
+          const auto = src && src.type !== 'grant';
+          return `
+          <label class="list-row" style="cursor:${auto ? 'default' : 'pointer'}">
+            <input type="checkbox" data-grant="${s.id}" ${src ? 'checked' : ''} ${auto ? 'disabled' : ''}>
+            <div style="flex:1">
+              <div class="cell-main">${UI.esc(s.name)}</div>
+              <div class="cell-sub">${src ? I18N.t('adm.customers.kitVia.' + src.type, { ref: UI.esc(src.ref || '') }) : I18N.t(s.kitRequired ? 'adm.customers.kitNone' : 'adm.customers.kitNotRequired')}</div>
+            </div>
+          </label>`;
+        }).join('')}
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="kitSave">${I18N.t('adm.settings.saveBtn')}</button>
+      </div>`, 'narrow');
+
+    document.getElementById('kitSave').onclick = () => {
+      document.querySelectorAll('[data-grant]:not([disabled])').forEach(i => Store.setKitGrant(c.id, i.dataset.grant, i.checked));
+      UI.closeModal();
+      App.refreshAll();
+      UI.toast('ok', I18N.t('adm.customers.kitSaved'), c.name);
     };
+  },
+
+  /* ============================================================
+     TIENDAS — tres canales sobre el mismo inventario
+     ============================================================ */
+  storeUrl(id) {
+    return location.origin + location.pathname + '?store=' + id;
+  },
+
+  storesHTML() {
+    const m = Store.metrics();
+    const shared = Store.products.filter(p => p.stores.length > 1 && p.active).length;
+
+    return this.head(I18N.t('adm.stores.title'), I18N.t('adm.stores.sub')) + `
+    <div class="alert alert-info">
+      ${UI.infoIcon()}
+      <div>
+        <div class="alert-title">${I18N.t('adm.stores.sharedTitle')}</div>
+        <div class="alert-body">${I18N.t('adm.stores.sharedBody', { n: shared })}</div>
+      </div>
+    </div>
+
+    <div class="store-grid">
+      ${Store.stores.map(s => {
+        const list = Store.productsInStore(s.id);
+        const kits = list.filter(p => Store.isKit(p)).length;
+        const stat = m.byStore.find(b => b.store.id === s.id);
+        const url = this.storeUrl(s.id);
+        return `
+        <div class="card store-card" data-store-card="${s.id}">
+          <div class="card-head">
+            <div>
+              <h2>${UI.esc(s.name)}</h2>
+              <p class="muted tiny" style="margin-top:2px">${I18N.t('shop.phase', { n: s.phase })}${s.source ? ' · ' + I18N.t('adm.stores.replaces', { url: UI.esc(s.source.replace(/^https?:\/\//, '').replace(/\/$/, '')) }) : ''}</p>
+            </div>
+            <span class="badge ${s.active ? 'badge-ok' : 'badge-neutral'}"><span class="dot"></span>${I18N.t(s.active ? 'store.statusActive' : 'store.statusPrep')}</span>
+          </div>
+          <div class="card-body">
+            <div class="store-stats">
+              <div><div class="v">${kits}</div><div class="l">${I18N.t('adm.stores.kits')}</div></div>
+              <div><div class="v">${list.length - kits}</div><div class="l">${I18N.t('adm.stores.pieces')}</div></div>
+              <div><div class="v">${stat.orders}</div><div class="l">${I18N.t('adm.stores.orders')}</div></div>
+              <div><div class="v">${UI.money0(stat.revenue)}</div><div class="l">${I18N.t('adm.stores.revenue')}</div></div>
+            </div>
+
+            <div class="form-grid" style="margin-top:var(--s5)">
+              <div class="field">
+                <label>${I18N.t('adm.stores.tax')}</label>
+                <input class="input" type="number" step="0.001" min="0" max="20" data-k="tax" value="${Math.round(s.taxRate * 100000) / 1000}">
+              </div>
+              <div class="field">
+                <label>${I18N.t('adm.stores.shipFlat')}</label>
+                <input class="input" type="number" step="0.01" min="0" data-k="ship" value="${s.shippingFlat}">
+              </div>
+              <div class="field span-2 store-checks">
+                <label><input type="checkbox" data-k="kit" ${s.kitRequired ? 'checked' : ''}> ${I18N.t('adm.stores.kitRequired')}</label>
+                <label><input type="checkbox" data-k="pickup" ${s.pickup ? 'checked' : ''}> ${I18N.t('adm.stores.pickup')}</label>
+                <label><input type="checkbox" data-k="shipping" ${s.shipping ? 'checked' : ''}> ${I18N.t('adm.stores.shipping')}</label>
+              </div>
+            </div>
+
+            <div class="store-actions">
+              <button class="btn btn-sm btn-primary" data-save-store="${s.id}">${I18N.t('adm.settings.saveBtn')}</button>
+              <button class="btn btn-sm" data-toggle-store="${s.id}">${I18N.t(s.active ? 'adm.stores.pause' : 'adm.stores.publish')}</button>
+              <button class="btn btn-sm btn-ghost" data-open-store="${s.id}">${I18N.t('adm.stores.preview')}</button>
+            </div>
+
+            <div class="store-link">
+              ${UI.qr(url, 132)}
+              <div class="store-link-text">
+                <div class="kpi-label">${I18N.t('adm.stores.linkTitle')}</div>
+                <p class="muted tiny" style="margin:4px 0 8px;line-height:1.5">${I18N.t('adm.stores.linkBody')}</p>
+                <div class="mono tiny store-url">${UI.esc(url)}</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+                  <button class="btn btn-sm" data-copy="${s.id}">${I18N.t('adm.stores.copy')}</button>
+                  <button class="btn btn-sm" data-print="${s.id}">${I18N.t('adm.stores.printQr')}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  storesBind() {
+    document.querySelectorAll('[data-save-store]').forEach(b => b.onclick = () => {
+      const id = b.dataset.saveStore;
+      const card = document.querySelector(`[data-store-card="${id}"]`);
+      const get = k => card.querySelector(`[data-k="${k}"]`);
+      const pickup = get('pickup').checked, shipping = get('shipping').checked;
+      if (!pickup && !shipping) { UI.toast('warn', I18N.t('adm.stores.needDelivery'), I18N.t('adm.stores.needDeliveryBody')); return; }
+      Store.saveStore(id, {
+        taxRate: Math.max(0, parseFloat(get('tax').value) || 0) / 100,
+        shippingFlat: Math.max(0, parseFloat(get('ship').value) || 0),
+        kitRequired: get('kit').checked, pickup, shipping
+      });
+      App.refreshAll();
+      UI.toast('ok', I18N.t('adm.settings.saved'), UI.storeName(id));
+    });
+
+    document.querySelectorAll('[data-toggle-store]').forEach(b => b.onclick = () => {
+      const s = Store.storeCfg(b.dataset.toggleStore);
+      Store.saveStore(s.id, { active: !s.active });
+      App.refreshAll();
+      UI.toast('ok', I18N.t(s.active ? 'adm.stores.publishedTitle' : 'adm.stores.pausedTitle'), I18N.t(s.active ? 'adm.stores.publishedBody' : 'adm.stores.pausedBody', { name: s.name }));
+    });
+
+    document.querySelectorAll('[data-open-store]').forEach(b => b.onclick = () => {
+      Store.setStore(b.dataset.openStore);
+      App.setMode('shop');
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => {
+      const url = this.storeUrl(b.dataset.copy);
+      const done = () => UI.toast('ok', I18N.t('adm.stores.copied'), url);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, done);
+      else done();
+    });
+
+    document.querySelectorAll('[data-print]').forEach(b => b.onclick = () => this.printQR(b.dataset.print));
+  },
+
+  printQR(id) {
+    const s = Store.storeCfg(id);
+    const url = this.storeUrl(id);
+    const w = window.open('', '_blank');
+    if (!w) { UI.toast('warn', I18N.t('adm.stores.popupTitle'), I18N.t('adm.stores.popupBody')); return; }
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${UI.esc(s.name)} — QR</title>
+      <style>body{font-family:Arial,Helvetica,sans-serif;text-align:center;padding:48px 24px;color:#0b0c0e}
+      h1{font-size:34px;margin:0 0 6px}p{font-size:18px;margin:6px 0;color:#3a3f4a}.u{font-family:monospace;font-size:13px;margin-top:18px}</style></head>
+      <body><h1>${UI.esc(s.name)}</h1><p>${I18N.t('adm.stores.qrCall')}</p><div style="margin:28px 0">${UI.qr(url, 440)}</div>
+      <p>${I18N.t('adm.stores.qrNoCash')}</p><div class="u">${UI.esc(url)}</div>
+      <script>window.onload=function(){window.print()}<\/script></body></html>`);
+    w.document.close();
   },
 
   /* ============================================================
@@ -1177,16 +1776,25 @@ const Admin = {
       <tr>
         <td>
           <div class="cell-flex">
-            <div class="thumb" style="background:${v.colorHex};color:${['#f2f3f5','#c9a227'].includes(v.colorHex) ? '#16181d' : '#fff'}">${UI.esc(v.size)}</div>
-            <div><div class="cell-main">${UI.esc(p.name)}</div><div class="cell-sub">${UI.esc(v.size)} · ${UI.esc(v.color)}</div></div>
+            ${UI.thumb(p)}
+            <div><div class="cell-main">${UI.esc(p.name)}</div><div class="cell-sub">${I18N.t('shop.size')} <b>${UI.esc(UI.sizeLabel(v.size))}</b></div></div>
           </div>
         </td>
         <td class="mono tiny">${UI.esc(v.sku)}</td>
+        <td><div class="tags">${UI.storeTags(p)}</div></td>
         <td class="right"><strong style="color:${critical ? 'var(--danger-600)' : 'var(--warn-600)'};font-size:15px">${v.stock}</strong></td>
         <td class="right muted">${p.minStock}</td>
-        <td class="right">${critical ? `<span class="badge badge-danger">${I18N.t('adm.alerts.restockNow')}</span>` : `<span class="badge badge-warn">${I18N.t('adm.alerts.missing', { n: Math.max(1, p.minStock - v.stock) })}</span>`}</td>
+        <td class="right">${critical ? `<span class="badge badge-danger">${I18N.t('adm.alerts.restockNow')}</span>` : `<span class="badge badge-warn">${I18N.t('adm.alerts.missing', { n: Math.max(1, p.minStock - v.stock + 1) })}</span>`}</td>
         <td class="right"><button class="btn btn-sm btn-primary" data-restock="${v.id}">${I18N.t('adm.alerts.restockBtn')}</button></td>
       </tr>`;
+
+    const table = items => `
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>${I18N.t('adm.alerts.colProductVariant')}</th><th>${I18N.t('adm.alerts.colSku')}</th><th>${I18N.t('adm.inv.colStores')}</th><th class="right">${I18N.t('adm.alerts.colStock')}</th><th class="right">${I18N.t('adm.alerts.colMin')}</th><th class="right">${I18N.t('adm.alerts.colStatus')}</th><th class="right">${I18N.t('adm.alerts.colAction')}</th></tr></thead>
+          <tbody>${items}</tbody>
+        </table>
+      </div>`;
 
     return this.head(
       I18N.t('adm.alerts.title'),
@@ -1207,14 +1815,7 @@ const Admin = {
           <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.alerts.outSub')}</p>
         </div>
       </div>
-      <div class="card-body flush">
-        <div class="table-wrap">
-          <table class="data">
-            <thead><tr><th>${I18N.t('adm.alerts.colProductVariant')}</th><th>${I18N.t('adm.alerts.colSku')}</th><th class="right">${I18N.t('adm.alerts.colStock')}</th><th class="right">${I18N.t('adm.alerts.colMin')}</th><th class="right">${I18N.t('adm.alerts.colStatus')}</th><th class="right">${I18N.t('adm.alerts.colAction')}</th></tr></thead>
-            <tbody>${m.outItems.map(({ p, v }) => row(p, v, true)).join('')}</tbody>
-          </table>
-        </div>
-      </div>
+      <div class="card-body flush">${table(m.outItems.map(({ p, v }) => row(p, v, true)).join(''))}</div>
     </div>` : ''}
 
     ${m.lowCount ? `
@@ -1225,14 +1826,7 @@ const Admin = {
           <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.alerts.lowSub')}</p>
         </div>
       </div>
-      <div class="card-body flush">
-        <div class="table-wrap">
-          <table class="data">
-            <thead><tr><th>${I18N.t('adm.alerts.colProductVariant')}</th><th>${I18N.t('adm.alerts.colSku')}</th><th class="right">${I18N.t('adm.alerts.colStock')}</th><th class="right">${I18N.t('adm.alerts.colMin')}</th><th class="right">${I18N.t('adm.alerts.colStatus')}</th><th class="right">${I18N.t('adm.alerts.colAction')}</th></tr></thead>
-            <tbody>${m.lowItems.map(({ p, v }) => row(p, v, false)).join('')}</tbody>
-          </table>
-        </div>
-      </div>
+      <div class="card-body flush">${table(m.lowItems.map(({ p, v }) => row(p, v, false)).join(''))}</div>
     </div>` : ''}`;
   },
 
@@ -1240,32 +1834,25 @@ const Admin = {
     document.querySelectorAll('[data-restock]').forEach(b =>
       b.onclick = () => this.movementForm(b.dataset.restock, 'entrada'));
 
-    const g = document.getElementById('alertOrder');
-    if (g) g.onclick = () => {
+    document.getElementById('alertOrder').onclick = () => {
       const m = Store.metrics();
       const items = [...m.outItems, ...m.lowItems];
       if (!items.length) { UI.toast('info', I18N.t('adm.alerts.nothingToRestock'), I18N.t('adm.alerts.nothingToRestockBody')); return; }
-      const lines = items.map(({ p, v }) => {
-        const need = Math.max(p.minStock * 2 - v.stock, p.minStock);
-        return { sku: v.sku, name: p.name, variant: `${v.size} / ${v.color}`, need, cost: need * p.cost };
-      });
+      const need = (p, v) => Math.max(p.minStock * 2 - v.stock, p.minStock, 1);
+      const lines = items.map(({ p, v }) => ({ sku: v.sku, name: p.name, size: v.size, need: need(p, v), cost: need(p, v) * p.cost }));
       const total = lines.reduce((s, l) => s + l.cost, 0);
 
       UI.modal(`
-        <div class="modal-head"><h2>${I18N.t('adm.alerts.proposalTitle')}</h2>
-          <button class="icon-btn" onclick="UI.closeModal()" aria-label="${I18N.t('adm.alerts.close')}"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
-        </div>
+        <div class="modal-head"><h2>${I18N.t('adm.alerts.proposalTitle')}</h2>${UI.closeBtn()}</div>
         <div class="modal-body">
-          <p class="muted" style="font-size:13.5px;margin-bottom:16px">
-            ${I18N.t('adm.alerts.proposalExplain')}
-          </p>
+          <p class="muted" style="font-size:13.5px;margin-bottom:16px">${I18N.t('adm.alerts.proposalExplain')}</p>
           <div class="table-wrap" style="border:1px solid var(--border);border-radius:var(--r-md)">
             <table class="data">
               <thead><tr><th>${I18N.t('adm.alerts.colSku')}</th><th>${I18N.t('adm.alerts.colProduct')}</th><th class="right">${I18N.t('adm.alerts.colUnits')}</th><th class="right">${I18N.t('adm.alerts.colEstCost')}</th></tr></thead>
               <tbody>
                 ${lines.map(l => `<tr>
                   <td class="mono tiny">${UI.esc(l.sku)}</td>
-                  <td><div class="cell-main">${UI.esc(l.name)}</div><div class="cell-sub">${UI.esc(l.variant)}</div></td>
+                  <td><div class="cell-main">${UI.esc(l.name)}</div><div class="cell-sub">${I18N.t('shop.size')} ${UI.esc(UI.sizeLabel(l.size))}</div></td>
                   <td class="right"><strong>${l.need}</strong></td>
                   <td class="right mono">${UI.money(l.cost)}</td>
                 </tr>`).join('')}
@@ -1275,19 +1862,15 @@ const Admin = {
           <div class="sum-row total" style="margin-top:14px"><span>${I18N.t('adm.alerts.estInvestment')}</span><span>${UI.money(total)}</span></div>
         </div>
         <div class="modal-foot">
-          <button class="btn" onclick="UI.closeModal()">${I18N.t('adm.alerts.close')}</button>
+          <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.close')}</button>
           <button class="btn btn-primary" id="opConfirm">${I18N.t('adm.alerts.logAsIn')}</button>
         </div>`, 'wide');
 
       document.getElementById('opConfirm').onclick = () => {
-        const ref = 'OP-' + Math.floor(1000 + Math.random() * 9000);
+        const ref = 'OC-' + Math.floor(1000 + Math.random() * 9000);
         let n = 0;
         items.forEach(({ p, v }) => {
-          const need = Math.max(p.minStock * 2 - v.stock, p.minStock);
-          const r = Store.applyMovement({
-            variantId: v.id, type: 'entrada', qty: need,
-            reason: 'Producción terminada', ref
-          });
+          const r = Store.applyMovement({ variantId: v.id, type: 'entrada', qty: need(p, v), reason: 'purchase', ref });
           if (r.ok) n++;
         });
         UI.closeModal();
@@ -1302,30 +1885,25 @@ const Admin = {
      ============================================================ */
   reportsHTML() {
     const m = Store.metrics();
+    const stocked = Store.products.filter(p => p.active && !Store.isKit(p));
 
-    // Valor de inventario por categoría
-    const byCat = {};
-    Store.products.filter(p => p.active && !p.madeToOrder).forEach(p => {
-      const val = p.variants.reduce((s, v) => s + v.stock * p.cost, 0);
-      const units = p.variants.reduce((s, v) => s + v.stock, 0);
-      const k = UI.catName(p.category);
-      if (!byCat[k]) byCat[k] = { value: 0, units: 0 };
-      byCat[k].value += val;
-      byCat[k].units += units;
+    const byKind = {};
+    stocked.forEach(p => {
+      if (!byKind[p.kind]) byKind[p.kind] = { value: 0, units: 0 };
+      byKind[p.kind].value += p.variants.reduce((s, v) => s + v.stock * p.cost, 0);
+      byKind[p.kind].units += p.variants.reduce((s, v) => s + v.stock, 0);
     });
-    const cats = Object.entries(byCat).sort((a, b) => b[1].value - a[1].value);
-    const maxCat = Math.max(1, ...cats.map(c => c[1].value));
+    const kinds = Object.entries(byKind).sort((a, b) => b[1].value - a[1].value);
+    const maxKind = Math.max(1, ...kinds.map(c => c[1].value));
 
-    // Ventas por día del mes
     const byDay = {};
     Store.orders.filter(o => o.paymentStatus === 'pagado').forEach(o => {
-      const d = o.date.slice(0, 10);
+      const d = Store.dayKey(o.date);
       byDay[d] = (byDay[d] || 0) + o.total;
     });
-    const days = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0]));
+    const days = Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).slice(-14);
     const maxDay = Math.max(1, ...days.map(d => d[1]));
 
-    // Rotación por motivo
     const byReason = {};
     Store.movements.forEach(mv => {
       if (!byReason[mv.reason]) byReason[mv.reason] = { in: 0, out: 0 };
@@ -1335,6 +1913,7 @@ const Admin = {
     const maxReason = Math.max(1, ...reasons.map(r => r[1].in + r[1].out));
 
     const topMax = Math.max(1, ...m.topProducts.map(p => p.qty));
+    const maxStore = Math.max(1, ...m.byStore.map(b => b.revenue));
 
     return this.head(
       I18N.t('adm.reports.title'),
@@ -1344,19 +1923,19 @@ const Admin = {
     <div class="kpi-grid">
       <div class="kpi kpi-principal"><div class="kpi-label">${I18N.t('adm.reports.kpiInvCapital')}</div><div class="kpi-value">${UI.money0(m.invValue)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiInvCapitalFoot')}</div></div>
       <div class="kpi"><div class="kpi-label">${I18N.t('adm.reports.kpiMargin')}</div><div class="kpi-value">${UI.money0(m.margin)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiMarginFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.reports.kpiMonthSales')}</div><div class="kpi-value">${UI.money0(m.salesMonth)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiMonthSalesFoot')}</div></div>
-      <div class="kpi"><div class="kpi-label">${I18N.t('adm.reports.kpiTicket')}</div><div class="kpi-value">${UI.money0(m.ticket)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiTicketFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.dashboard.sales30')}</div><div class="kpi-value">${UI.money0(m.sales30)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiTicketFoot', { ticket: UI.money0(m.ticket) })}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.reports.kpiTax')}</div><div class="kpi-value">${UI.money(m.tax30)}</div><div class="kpi-foot">${I18N.t('adm.reports.kpiTaxFoot')}</div></div>
     </div>
 
     <div class="grid-halves">
       <div class="card">
-        <div class="card-head"><h2>${I18N.t('adm.reports.invByCategory')}</h2></div>
+        <div class="card-head"><h2>${I18N.t('adm.reports.salesByStore')}</h2></div>
         <div class="card-body">
-          ${cats.map(([name, d], i) => `
+          ${m.byStore.map((b, i) => `
             <div class="bar-row">
-              <div class="bar-label"><div style="font-weight:560">${UI.esc(name)}</div><div class="tiny muted">${I18N.t('adm.reports.units', { n: d.units })}</div></div>
-              <div class="bar-track"><div class="bar-fill ${i === 0 ? 'gold' : ''}" style="width:${(d.value / maxCat) * 100}%"></div></div>
-              <div class="bar-val">${UI.money0(d.value)}</div>
+              <div class="bar-label"><div style="font-weight:560">${UI.esc(b.store.short)}</div><div class="tiny muted">${I18N.t('adm.reports.ordersN', { n: b.orders })}</div></div>
+              <div class="bar-track"><div class="bar-fill ${i === 0 ? 'gold' : ''}" style="width:${(b.revenue / maxStore) * 100}%"></div></div>
+              <div class="bar-val">${UI.money0(b.revenue)}</div>
             </div>`).join('')}
         </div>
       </div>
@@ -1374,6 +1953,18 @@ const Admin = {
       </div>
 
       <div class="card">
+        <div class="card-head"><h2>${I18N.t('adm.reports.invByKind')}</h2></div>
+        <div class="card-body">
+          ${kinds.map(([k, d], i) => `
+            <div class="bar-row">
+              <div class="bar-label"><div style="font-weight:560">${I18N.t('kind.' + k)}</div><div class="tiny muted">${I18N.t('adm.reports.units', { n: UI.num(d.units) })}</div></div>
+              <div class="bar-track"><div class="bar-fill ${i === 0 ? 'gold' : ''}" style="width:${(d.value / maxKind) * 100}%"></div></div>
+              <div class="bar-val">${UI.money0(d.value)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-head"><h2>${I18N.t('adm.reports.topProducts')}</h2></div>
         <div class="card-body">
           ${m.topProducts.length ? m.topProducts.map((p, i) => `
@@ -1384,18 +1975,18 @@ const Admin = {
             </div>`).join('') : `<p class="muted tiny">${I18N.t('adm.reports.noData')}</p>`}
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <div class="card-head"><h2>${I18N.t('adm.reports.movementsByReason')}</h2></div>
-        <div class="card-body">
-          ${reasons.map(([name, d]) => `
-            <div class="bar-row">
-              <div class="bar-label"><div style="font-weight:560;font-size:12.5px">${UI.esc(name)}</div>
-                <div class="tiny"><span style="color:var(--ok-600)">+${d.in}</span> · <span style="color:var(--danger-600)">−${d.out}</span></div></div>
-              <div class="bar-track"><div class="bar-fill" style="width:${((d.in + d.out) / maxReason) * 100}%"></div></div>
-              <div class="bar-val">${I18N.t('adm.reports.unitsShort', { n: d.in + d.out })}</div>
-            </div>`).join('')}
-        </div>
+    <div class="card" style="margin-top:var(--s5)">
+      <div class="card-head"><h2>${I18N.t('adm.reports.movementsByReason')}</h2></div>
+      <div class="card-body">
+        ${reasons.map(([code, d]) => `
+          <div class="bar-row">
+            <div class="bar-label wide"><div style="font-weight:560;font-size:12.5px">${UI.esc(UI.reason(code))}</div>
+              <div class="tiny"><span style="color:var(--ok-600)">+${UI.num(d.in)}</span> · <span style="color:var(--danger-600)">−${UI.num(d.out)}</span></div></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${((d.in + d.out) / maxReason) * 100}%"></div></div>
+            <div class="bar-val">${I18N.t('adm.reports.unitsShort', { n: UI.num(d.in + d.out) })}</div>
+          </div>`).join('')}
       </div>
     </div>
 
@@ -1404,18 +1995,19 @@ const Admin = {
       <div class="card-body flush">
         <div class="table-wrap">
           <table class="data">
-            <thead><tr><th>${I18N.t('adm.reports.colProduct')}</th><th class="right">${I18N.t('adm.reports.colUnits')}</th><th class="right">${I18N.t('adm.reports.colUnitCost')}</th><th class="right">${I18N.t('adm.reports.colCostValue')}</th><th class="right">${I18N.t('adm.reports.colSaleValue')}</th><th class="right">${I18N.t('adm.reports.colMargin')}</th></tr></thead>
+            <thead><tr><th>${I18N.t('adm.reports.colProduct')}</th><th>${I18N.t('adm.inv.colStores')}</th><th class="right">${I18N.t('adm.reports.colUnits')}</th><th class="right">${I18N.t('adm.reports.colUnitCost')}</th><th class="right">${I18N.t('adm.reports.colCostValue')}</th><th class="right">${I18N.t('adm.reports.colSaleValue')}</th><th class="right">${I18N.t('adm.reports.colMargin')}</th></tr></thead>
             <tbody>
-              ${Store.products.filter(p => p.active && !p.madeToOrder).map(p => {
+              ${stocked.map(p => {
                 const u = Store.productStock(p);
                 const vc = u * p.cost, vv = u * p.price;
                 return `<tr>
                   <td><div class="cell-main">${UI.esc(p.name)}</div><div class="cell-sub mono">${UI.esc(p.sku)}</div></td>
+                  <td><div class="tags">${UI.storeTags(p)}</div></td>
                   <td class="right">${UI.num(u)}</td>
                   <td class="right mono muted">${UI.money(p.cost)}</td>
                   <td class="right mono">${UI.money(vc)}</td>
                   <td class="right mono">${UI.money(vv)}</td>
-                  <td class="right"><span class="delta up">${UI.money(vv - vc)}</span></td>
+                  <td class="right"><span class="delta ${vv - vc > 0 ? 'up' : ''}">${UI.money(vv - vc)}</span></td>
                 </tr>`;
               }).join('')}
             </tbody>
@@ -1430,6 +2022,7 @@ const Admin = {
      ============================================================ */
   settingsHTML() {
     const s = Store.settings;
+    const cat = typeof CATALOG !== 'undefined' ? CATALOG : null;
     return this.head(I18N.t('adm.settings.title'), I18N.t('adm.settings.sub')) + `
     <div class="grid-halves">
       <div class="card">
@@ -1437,15 +2030,12 @@ const Admin = {
         <div class="card-body">
           <div class="field"><label for="stCompany">${I18N.t('adm.settings.companyName')}</label><input class="input" id="stCompany" value="${UI.esc(s.company)}"></div>
           <div class="field"><label for="stCity">${I18N.t('adm.settings.city')}</label><input class="input" id="stCity" value="${UI.esc(s.city)}"></div>
-          <div class="form-grid">
-            <div class="field"><label for="stShip">${I18N.t('adm.settings.flatShipping')}</label><input class="input" id="stShip" type="number" step="0.01" value="${s.shippingFlat}"></div>
-            <div class="field"><label for="stFree">${I18N.t('adm.settings.freeShippingOver')}</label><input class="input" id="stFree" type="number" step="1" value="${s.freeShippingOver}"></div>
-          </div>
           <div class="field">
             <label for="stLow">${I18N.t('adm.settings.lowStockThreshold')}</label>
             <input class="input" id="stLow" type="number" min="0" value="${s.lowStockGlobal}">
             <div class="hint">${I18N.t('adm.settings.lowStockHint')}</div>
           </div>
+          <p class="tiny muted" style="margin-bottom:14px;line-height:1.6">${I18N.t('adm.settings.perStoreNote')}</p>
           <button class="btn btn-primary" id="stSave">${I18N.t('adm.settings.saveBtn')}</button>
         </div>
       </div>
@@ -1458,41 +2048,38 @@ const Admin = {
               <div class="thumb" style="background:var(--ink-800);width:34px;height:34px">${UI.esc(u.initials)}</div>
               <div style="flex:1;min-width:0">
                 <div class="cell-main">${UI.esc(u.name)}</div>
-                <div class="cell-sub">${UI.esc(u.email)}</div>
+                <div class="cell-sub">${I18N.t('role.' + u.role + '.desc')}</div>
               </div>
-              <span class="badge ${u.role === 'Administrador' ? 'badge-gold' : 'badge-neutral'}">${UI.esc(u.role)}</span>
+              <span class="badge ${u.role === 'admin' ? 'badge-gold' : 'badge-neutral'}">${I18N.t('role.' + u.role)}</span>
             </div>`).join('')}
-          <div class="alert alert-info" style="margin-top:16px;margin-bottom:0">
-            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-            <div>
-              <div class="alert-title">${I18N.t('adm.settings.rolesTitle')}</div>
-              <div class="alert-body">${I18N.t('adm.settings.rolesBody')}</div>
-            </div>
+          <div class="field" style="margin-top:16px">
+            <label for="stUser">${I18N.t('adm.settings.activeUser')}</label>
+            <select class="select" id="stUser">
+              ${Store.state.users.filter(u => u.id !== 'sys').map(u =>
+                `<option value="${u.id}"${Store.state.currentUser === u.id ? ' selected' : ''}>${UI.esc(u.name)} — ${I18N.t('role.' + u.role)}</option>`).join('')}
+            </select>
+            <div class="hint">${I18N.t('adm.settings.activeUserHint')}</div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><h2>${I18N.t('adm.settings.activeUser')}</h2></div>
+        <div class="card-head"><h2>${I18N.t('adm.settings.catalogTitle')}</h2></div>
         <div class="card-body">
-          <p class="muted tiny" style="margin-bottom:12px">${I18N.t('adm.settings.activeUserHint')}</p>
-          <div class="field">
-            <select class="select" id="stUser">
-              ${Store.state.users.filter(u => u.id !== 'sys').map(u =>
-                `<option value="${u.id}"${Store.state.currentUser === u.id ? ' selected' : ''}>${UI.esc(u.name)} — ${UI.esc(u.role)}</option>`).join('')}
-            </select>
-          </div>
+          <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.settings.catalogBody')}</p>
+          ${cat ? Object.keys(cat.sources).map(k => `
+            <div class="kv"><span class="k">${UI.esc(cat.sources[k].name)}</span><span class="v">${I18N.t('adm.settings.catalogCount', { n: cat.products.filter(p => p.stores.includes(k)).length })}</span></div>`).join('') : ''}
+          <div class="kv"><span class="k">${I18N.t('adm.settings.catalogShared')}</span><span class="v">${cat ? cat.products.filter(p => p.stores.length > 1).length : 0}</span></div>
+          <div class="kv"><span class="k">${I18N.t('adm.settings.catalogDate')}</span><span class="v">${cat ? UI.date(cat.importedAt) : '—'}</span></div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-head"><h2>${I18N.t('adm.settings.demoData')}</h2></div>
         <div class="card-body">
-          <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">
-            ${I18N.t('adm.settings.demoDataBody')}
-          </p>
+          <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.settings.demoDataBody')}</p>
           <div class="kv"><span class="k">${I18N.t('adm.settings.products')}</span><span class="v">${Store.products.length}</span></div>
-          <div class="kv"><span class="k">${I18N.t('adm.settings.skus')}</span><span class="v">${Store.products.reduce((s, p) => s + p.variants.length, 0)}</span></div>
+          <div class="kv"><span class="k">${I18N.t('adm.settings.skus')}</span><span class="v">${Store.products.reduce((n, p) => n + p.variants.length, 0)}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.orders')}</span><span class="v">${Store.orders.length}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.movements')}</span><span class="v">${Store.movements.length}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.customers')}</span><span class="v">${Store.customers.length}</span></div>
@@ -1507,8 +2094,6 @@ const Admin = {
       const s = Store.settings;
       s.company = document.getElementById('stCompany').value.trim() || s.company;
       s.city = document.getElementById('stCity').value.trim() || s.city;
-      s.shippingFlat = parseFloat(document.getElementById('stShip').value) || 0;
-      s.freeShippingOver = parseFloat(document.getElementById('stFree').value) || 0;
       s.lowStockGlobal = parseInt(document.getElementById('stLow').value) || 0;
       Store.save();
       App.refreshAll();
@@ -1522,11 +2107,6 @@ const Admin = {
       UI.toast('info', I18N.t('adm.settings.userChanged'), I18N.t('adm.settings.userChangedBody', { name: Store.user().name }));
     };
 
-    document.getElementById('stReset').onclick = () => UI.confirm(
-      I18N.t('adm.settings.confirmResetTitle'),
-      I18N.t('adm.settings.confirmResetBody'),
-      () => { Store.reset(); App.refreshAll(); UI.toast('ok', I18N.t('adm.settings.resetDone'), I18N.t('adm.settings.resetDoneBody')); },
-      true
-    );
+    document.getElementById('stReset').onclick = () => this.confirmReset();
   }
 };

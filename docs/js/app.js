@@ -1,13 +1,27 @@
 /* ============================================================
-   SOCCER CAGE — Arranque y conmutación Tienda ⇄ Panel admin
+   SOCCER CAGE — Arranque y conmutación Tienda ⇄ Panel ⇄ Análisis
+
+   Dos formas de entrar:
+   · Demo completa (sin parámetros): las tres vistas y las tres tiendas.
+   · Tienda pública (?store=camps): solo la tienda de ese canal, sin
+     panel. Es el enlace del QR que se imprime para los campamentos.
    ============================================================ */
 
 const App = {
-  mode: 'compare',
+  mode: 'shop',
+  storefront: null,
 
   init() {
     I18N.init();
     Store.load();
+
+    const wanted = new URLSearchParams(location.search).get('store');
+    if (wanted && Store.storeCfg(wanted)) {
+      this.storefront = wanted;
+      Store.setStore(wanted);
+      document.body.classList.add('storefront');
+    }
+
     this.medirScrollbar();
     this.applyStaticI18n();
 
@@ -22,26 +36,23 @@ const App = {
       I18N.setLang(I18N.lang === 'es' ? 'en' : 'es');
 
     Shop.init();
-    Admin.init();
-    Compare.init();
+    if (!this.storefront) {
+      Admin.init();
+      Compare.init();
+    }
     this.syncUser();
-    this.setMode('compare');   // deja la barra coherente desde el arranque; Tienda queda oculta
+    this.setMode('shop');   // deja la barra coherente desde el arranque
 
     // Atajos de teclado para la demostración en vivo
     document.addEventListener('keydown', e => {
-      if (e.altKey && e.key === '1') { e.preventDefault(); this.setMode('shop'); }
-      if (e.altKey && e.key === '2') { e.preventDefault(); this.setMode('admin'); }
-      if (e.altKey && e.key === '3') { e.preventDefault(); this.setMode('compare'); }
+      if (this.storefront || !e.altKey) return;
+      const m = { '1': 'shop', '2': 'admin', '3': 'compare' }[e.key];
+      if (m) { e.preventDefault(); this.setMode(m); }
     });
-
-    console.log(
-      '%cSoccer Cage · Prototipo de inventario y ventas',
-      'background:#0b0c0e;color:#c9a227;padding:6px 12px;border-radius:4px;font-weight:bold'
-    );
-    console.log('Atajos: Alt+1 Tienda · Alt+2 Panel admin');
   },
 
   setMode(mode) {
+    if (this.storefront) mode = 'shop';
     this.mode = mode;
 
     const vistas = {
@@ -58,10 +69,8 @@ const App = {
       btn.setAttribute('aria-selected', activa);
     });
 
-    // El carrito solo tiene sentido en la tienda, pero ocultarlo con
-    // `display:none` liberaba su espacio y desplazaba toda la barra 138px
-    // de golpe al cambiar de pestaña. Se atenúa en su sitio: la barra
-    // no se mueve nunca.
+    // El carrito solo tiene sentido en la tienda. Se atenúa en su sitio en
+    // vez de ocultarlo: así la barra no salta al cambiar de pestaña.
     const cart = document.getElementById('cartBtn');
     cart.classList.toggle('is-inactive', mode !== 'shop');
     cart.setAttribute('aria-hidden', mode !== 'shop');
@@ -69,18 +78,16 @@ const App = {
     document.getElementById('sidebarToggle').classList.toggle('is-hidden', mode !== 'admin');
     document.getElementById('sidebar').classList.remove('open');
 
-    if (mode === 'shop') { Shop.render(); Shop.updateHero(); Shop.renderCart(); }
+    if (mode === 'shop') { Shop.render(); Shop.renderCart(); }
     else if (mode === 'admin') Admin.refresh();
     else Compare.render();
 
     // Al arrancar no hay nada que desplazar: evita un salto visible.
-    if (this._arrancado) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (this._arrancado) window.scrollTo({ top: 0 });
     this._arrancado = true;
   },
 
-  /** Traduce el shell estático del HTML (data-i18n / data-i18n-aria) y
-      actualiza la etiqueta del botón de idioma. Los módulos (Shop, Admin,
-      Compare) se repintan aparte porque generan su HTML por JS. */
+  /** Traduce el shell estático del HTML (data-i18n / data-i18n-aria) y la marca. */
   applyStaticI18n() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
       el.textContent = I18N.t(el.dataset.i18n);
@@ -88,8 +95,13 @@ const App = {
     document.querySelectorAll('[data-i18n-aria]').forEach(el => {
       el.setAttribute('aria-label', I18N.t(el.dataset.i18nAria));
     });
-    const label = document.getElementById('langBtnLabel');
-    if (label) label.textContent = I18N.lang === 'es' ? 'EN' : 'ES';
+    document.getElementById('langBtnLabel').textContent = I18N.lang === 'es' ? 'EN' : 'ES';
+
+    // En la tienda pública la marca es la de la tienda, no la de la plataforma.
+    const st = this.storefront ? Store.storeCfg(this.storefront) : null;
+    document.getElementById('brandName').textContent = st ? st.name : Store.settings.company;
+    document.getElementById('brandSub').textContent = I18N.t(st ? 'shop.official' : 'nav.brandSub');
+    document.title = (st ? st.name : Store.settings.company) + ' — ' + I18N.t(st ? 'shop.official' : 'nav.brandSub');
   },
 
   /** Mide la barra de scroll para compensarla al bloquear el fondo. */
@@ -104,13 +116,12 @@ const App = {
     document.getElementById('userName').textContent = u.name;
   },
 
-  /** Repinta todo lo visible tras una mutación de datos. */
+  /** Repinta todo lo visible tras una mutación de datos o un cambio de idioma. */
   refreshAll() {
     this.applyStaticI18n();
     Shop.render();
-    Shop.updateHero();
     Shop.renderCart();
-    Admin.refresh();
+    if (!this.storefront) Admin.refresh();
     this.syncUser();
   }
 };

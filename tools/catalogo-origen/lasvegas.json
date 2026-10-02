@@ -1,0 +1,2631 @@
+[
+ {
+  "id": 7937,
+  "name": "Juventus Competitive Mandatory Kit",
+  "slug": "juventus-competitive-mandatory-kit",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/juventus-competitive-mandatory-kit/",
+  "sku": "Juventus Competitive Mandatory Kit",
+  "short_description": "<p>Juventus Official Competitive Kit | Size selection applies to all items – Choose your size below</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "28900",
+   "regular_price": "28900",
+   "sale_price": "28900",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>289.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7936,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1.jpg 1500w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-1024x1024.jpg 1024w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-juve-las-vegas-1-100x100.jpg 100w",
+    "sizes": "(max-width: 1500px) 100vw, 1500px",
+    "name": "kit-competitive-juve-las-vegas-1",
+    "alt": ""
+   },
+   {
+    "id": 7935,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juventus-official-jersey-2026",
+    "alt": "juventus-official-jersey-2026"
+   },
+   {
+    "id": 7795,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-JFX-Red",
+    "alt": ""
+   },
+   {
+    "id": 7794,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-JFX-Blue",
+    "alt": ""
+   },
+   {
+    "id": 7797,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-Short-White-juventus",
+    "alt": ""
+   },
+   {
+    "id": 7796,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-Short-Black-juventus",
+    "alt": ""
+   },
+   {
+    "id": 7799,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "white-otc-socks",
+    "alt": ""
+   },
+   {
+    "id": 7793,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "black-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   },
+   {
+    "id": 33,
+    "name": "Official Kit",
+    "slug": "official-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/official-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7938,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   },
+   {
+    "id": 7939,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7940,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7941,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7942,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7943,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7944,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Juventus Competitive Mandatory Kit&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/juventus-competitive-mandatory-kit/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7945,
+  "name": "Juventus Competitive Mandatory GK Kit",
+  "slug": "juventus-competitive-mandatory-gk-kit",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/juventus-competitive-mandatory-gk-kit/",
+  "sku": "Juventus Competitive Mandatory GK Kit",
+  "short_description": "<p>Juventus Official Competitive GK Kit | Size selection applies to all items – Choose your size below</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "33500",
+   "regular_price": "33500",
+   "sale_price": "33500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>335.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7917,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas.jpg 1500w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-1024x1024.jpg 1024w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/kit-competitive-gk-las-vegas-100x100.jpg 100w",
+    "sizes": "(max-width: 1500px) 100vw, 1500px",
+    "name": "kit-competitive-gk-las-vegas",
+    "alt": ""
+   },
+   {
+    "id": 7868,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juve-goalkeeper-orange",
+    "alt": ""
+   },
+   {
+    "id": 7867,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juve-goalkeeper-green",
+    "alt": ""
+   },
+   {
+    "id": 7794,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-JFX-Blue",
+    "alt": ""
+   },
+   {
+    "id": 7865,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "gk-competitive-short-orange",
+    "alt": ""
+   },
+   {
+    "id": 7864,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "gk-competitive-short-green",
+    "alt": ""
+   },
+   {
+    "id": 7869,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "orange-socks",
+    "alt": ""
+   },
+   {
+    "id": 7866,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "green-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 46,
+    "name": "Competitive Juventus GK Kit",
+    "slug": "competitive-juventus-gk-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-gk-kit/"
+   },
+   {
+    "id": 33,
+    "name": "Official Kit",
+    "slug": "official-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/official-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7947,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   },
+   {
+    "id": 7948,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7949,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7950,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7951,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7952,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7953,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Juventus Competitive Mandatory GK Kit&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/juventus-competitive-mandatory-gk-kit/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7811,
+  "name": "Juventus official jersey",
+  "slug": "juventus-official-jersey",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/juventus-official-jersey/",
+  "sku": "Juventus official jersey",
+  "short_description": "<p>Juventus Replica Jersey</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "9500",
+   "regular_price": "9500",
+   "sale_price": "9500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>95.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7935,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juventus-official-jersey-2026-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juventus-official-jersey-2026",
+    "alt": "juventus-official-jersey-2026"
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7812,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   },
+   {
+    "id": 7813,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7814,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7818,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7819,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7820,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7821,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Juventus official jersey&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/juventus-official-jersey/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7800,
+  "name": "Practice Blue Jersey",
+  "slug": "practice-blue-jersey",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/practice-blue-jersey/",
+  "sku": "Practice blue jersey",
+  "short_description": "<p>Entrada 26 JFX Blue</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "4500",
+   "regular_price": "4500",
+   "sale_price": "4500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>45.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7794,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Blue-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-JFX-Blue",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7801,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   },
+   {
+    "id": 7802,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7803,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7807,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7808,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7809,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7810,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Practice Blue Jersey&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/practice-blue-jersey/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7782,
+  "name": "Away competitive red jersey",
+  "slug": "away-competitive-red-jersey",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/away-competitive-red-jersey/",
+  "sku": "Away competitive red jersey",
+  "short_description": "<p>Entrada 26 JFX Red</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "4500",
+   "regular_price": "4500",
+   "sale_price": "4500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>45.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7795,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-JFX-Red-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-JFX-Red",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7783,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   },
+   {
+    "id": 7784,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7785,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7789,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7790,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7791,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7792,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Away competitive red jersey&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/away-competitive-red-jersey/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7822,
+  "name": "Competitive white short",
+  "slug": "competitive-white-short",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competitive-white-short/",
+  "sku": "Competitive white short",
+  "short_description": "<p>Entrada 26 Short White</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "4000",
+   "regular_price": "4000",
+   "sale_price": "4000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>40.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7797,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-White-juventus-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-Short-White-juventus",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 0,
+    "name": "size",
+    "taxonomy": null,
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 0,
+      "name": "Youth XS",
+      "slug": "Youth XS"
+     },
+     {
+      "id": 0,
+      "name": "Youth Small",
+      "slug": "Youth Small"
+     },
+     {
+      "id": 0,
+      "name": "Youth Medium",
+      "slug": "Youth Medium"
+     },
+     {
+      "id": 0,
+      "name": "Youth Large",
+      "slug": "Youth Large"
+     },
+     {
+      "id": 0,
+      "name": "Adult Small",
+      "slug": "Adult Small"
+     },
+     {
+      "id": 0,
+      "name": "Adult Medium",
+      "slug": "Adult Medium"
+     },
+     {
+      "id": 0,
+      "name": "Adult Large",
+      "slug": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7823,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth XS"
+     }
+    ]
+   },
+   {
+    "id": 7824,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Small"
+     }
+    ]
+   },
+   {
+    "id": 7825,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Medium"
+     }
+    ]
+   },
+   {
+    "id": 7826,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Large"
+     }
+    ]
+   },
+   {
+    "id": 7827,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Small"
+     }
+    ]
+   },
+   {
+    "id": 7828,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Medium"
+     }
+    ]
+   },
+   {
+    "id": 7829,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competitive white short&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competitive-white-short/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7830,
+  "name": "Competitive black short",
+  "slug": "competitive-black-short",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competitive-black-short/",
+  "sku": "Competitive black short",
+  "short_description": "<p>Entrada 26 Short Black</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "4000",
+   "regular_price": "4000",
+   "sale_price": "4000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>40.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7796,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/Entrada-26-Short-Black-juventus-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "Entrada-26-Short-Black-juventus",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 0,
+    "name": "size",
+    "taxonomy": null,
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 0,
+      "name": "Youth XS",
+      "slug": "Youth XS"
+     },
+     {
+      "id": 0,
+      "name": "Youth Small",
+      "slug": "Youth Small"
+     },
+     {
+      "id": 0,
+      "name": "Youth Medium",
+      "slug": "Youth Medium"
+     },
+     {
+      "id": 0,
+      "name": "Youth Large",
+      "slug": "Youth Large"
+     },
+     {
+      "id": 0,
+      "name": "Adult Small",
+      "slug": "Adult Small"
+     },
+     {
+      "id": 0,
+      "name": "Adult Medium",
+      "slug": "Adult Medium"
+     },
+     {
+      "id": 0,
+      "name": "Adult Large",
+      "slug": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7831,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth XS"
+     }
+    ]
+   },
+   {
+    "id": 7832,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Small"
+     }
+    ]
+   },
+   {
+    "id": 7833,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Medium"
+     }
+    ]
+   },
+   {
+    "id": 7834,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Large"
+     }
+    ]
+   },
+   {
+    "id": 7835,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Small"
+     }
+    ]
+   },
+   {
+    "id": 7836,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Medium"
+     }
+    ]
+   },
+   {
+    "id": 7837,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competitive black short&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competitive-black-short/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7838,
+  "name": "Competitive white socks",
+  "slug": "competitive-white-socks",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competitive-white-socks/",
+  "sku": "Competitive white socks",
+  "short_description": "<p>Metro Socks White</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "1200",
+   "regular_price": "1200",
+   "sale_price": "1200",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>12.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7799,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/white-otc-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "white-otc-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 40,
+      "name": "Small",
+      "slug": "small"
+     },
+     {
+      "id": 41,
+      "name": "Medium",
+      "slug": "medium"
+     },
+     {
+      "id": 42,
+      "name": "Large",
+      "slug": "large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7839,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "large"
+     }
+    ]
+   },
+   {
+    "id": 7840,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "medium"
+     }
+    ]
+   },
+   {
+    "id": 7841,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "small"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competitive white socks&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competitive-white-socks/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7843,
+  "name": "Competitive black socks",
+  "slug": "competitive-black-socks",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competitive-black-socks/",
+  "sku": "Competitive black socks",
+  "short_description": "<p>Metro Socks Black</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "1200",
+   "regular_price": "1200",
+   "sale_price": "1200",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>12.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7793,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/black-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "black-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 40,
+      "name": "Small",
+      "slug": "small"
+     },
+     {
+      "id": 41,
+      "name": "Medium",
+      "slug": "medium"
+     },
+     {
+      "id": 42,
+      "name": "Large",
+      "slug": "large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7844,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "large"
+     }
+    ]
+   },
+   {
+    "id": 7845,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "medium"
+     }
+    ]
+   },
+   {
+    "id": 7846,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "small"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competitive black socks&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competitive-black-socks/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7873,
+  "name": "Competition green jersey GK",
+  "slug": "competition-green-jersey-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competition-green-jersey-gk/",
+  "sku": "Competition green jersey GK",
+  "short_description": "<p>Tiro Competition GK Jersey long sleve green</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "7000",
+   "regular_price": "7000",
+   "sale_price": "7000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>70.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7867,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-green-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juve-goalkeeper-green",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 46,
+    "name": "Competitive Juventus GK Kit",
+    "slug": "competitive-juventus-gk-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-gk-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7876,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   },
+   {
+    "id": 7878,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7880,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7888,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7889,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7890,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7891,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competition green jersey GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competition-green-jersey-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7853,
+  "name": "Competition orange jersey GK",
+  "slug": "competition-orange-jersey-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competition-orange-jersey-gk/",
+  "sku": "Competition orange jersey GK",
+  "short_description": "<p>Tiro Competition GK Jersey long sleve orange</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "7000",
+   "regular_price": "7000",
+   "sale_price": "7000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>70.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7868,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/juve-goalkeeper-orange-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "juve-goalkeeper-orange",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 46,
+    "name": "Competitive Juventus GK Kit",
+    "slug": "competitive-juventus-gk-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-gk-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 34,
+      "name": "Youth XS",
+      "slug": "youth-xs"
+     },
+     {
+      "id": 35,
+      "name": "Youth Small",
+      "slug": "youth-small"
+     },
+     {
+      "id": 36,
+      "name": "Youth Medium",
+      "slug": "youth-medium"
+     },
+     {
+      "id": 44,
+      "name": "Youth Large",
+      "slug": "youth-large"
+     },
+     {
+      "id": 37,
+      "name": "Adult Small",
+      "slug": "adult-small"
+     },
+     {
+      "id": 38,
+      "name": "Adult Medium",
+      "slug": "adult-medium"
+     },
+     {
+      "id": 39,
+      "name": "Adult Large",
+      "slug": "adult-large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7854,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-large"
+     }
+    ]
+   },
+   {
+    "id": 7855,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-medium"
+     }
+    ]
+   },
+   {
+    "id": 7856,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "adult-small"
+     }
+    ]
+   },
+   {
+    "id": 7860,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-large"
+     }
+    ]
+   },
+   {
+    "id": 7861,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-medium"
+     }
+    ]
+   },
+   {
+    "id": 7862,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-small"
+     }
+    ]
+   },
+   {
+    "id": 7863,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "youth-xs"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competition orange jersey GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competition-orange-jersey-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7900,
+  "name": "Competition green short GK",
+  "slug": "competition-green-short-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competition-green-short-gk/",
+  "sku": "Competition green short GK",
+  "short_description": "<p>Tiro competition short orange green</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "6000",
+   "regular_price": "6000",
+   "sale_price": "6000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>60.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7864,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-green-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "gk-competitive-short-green",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 46,
+    "name": "Competitive Juventus GK Kit",
+    "slug": "competitive-juventus-gk-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-gk-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 0,
+    "name": "size",
+    "taxonomy": null,
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 0,
+      "name": "Youth XS",
+      "slug": "Youth XS"
+     },
+     {
+      "id": 0,
+      "name": "Youth Small",
+      "slug": "Youth Small"
+     },
+     {
+      "id": 0,
+      "name": "Youth Medium",
+      "slug": "Youth Medium"
+     },
+     {
+      "id": 0,
+      "name": "Youth Large",
+      "slug": "Youth Large"
+     },
+     {
+      "id": 0,
+      "name": "Adult Small",
+      "slug": "Adult Small"
+     },
+     {
+      "id": 0,
+      "name": "Adult Medium",
+      "slug": "Adult Medium"
+     },
+     {
+      "id": 0,
+      "name": "Adult Large",
+      "slug": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7901,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth XS"
+     }
+    ]
+   },
+   {
+    "id": 7902,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Small"
+     }
+    ]
+   },
+   {
+    "id": 7903,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Medium"
+     }
+    ]
+   },
+   {
+    "id": 7904,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Large"
+     }
+    ]
+   },
+   {
+    "id": 7905,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Small"
+     }
+    ]
+   },
+   {
+    "id": 7906,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Medium"
+     }
+    ]
+   },
+   {
+    "id": 7907,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competition green short GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competition-green-short-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7892,
+  "name": "Competition orange short GK",
+  "slug": "competition-orange-short-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/competition-orange-short-gk/",
+  "sku": "Competition orange short GK",
+  "short_description": "<p>Tiro competition short orange</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "6000",
+   "regular_price": "6000",
+   "sale_price": "6000",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>60.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7865,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/gk-competitive-short-orange-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "gk-competitive-short-orange",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 46,
+    "name": "Competitive Juventus GK Kit",
+    "slug": "competitive-juventus-gk-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-gk-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 0,
+    "name": "size",
+    "taxonomy": null,
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 0,
+      "name": "Youth XS",
+      "slug": "Youth XS"
+     },
+     {
+      "id": 0,
+      "name": "Youth Small",
+      "slug": "Youth Small"
+     },
+     {
+      "id": 0,
+      "name": "Youth Medium",
+      "slug": "Youth Medium"
+     },
+     {
+      "id": 0,
+      "name": "Youth Large",
+      "slug": "Youth Large"
+     },
+     {
+      "id": 0,
+      "name": "Adult Small",
+      "slug": "Adult Small"
+     },
+     {
+      "id": 0,
+      "name": "Adult Medium",
+      "slug": "Adult Medium"
+     },
+     {
+      "id": 0,
+      "name": "Adult Large",
+      "slug": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7893,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth XS"
+     }
+    ]
+   },
+   {
+    "id": 7894,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Small"
+     }
+    ]
+   },
+   {
+    "id": 7895,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Medium"
+     }
+    ]
+   },
+   {
+    "id": 7896,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Youth Large"
+     }
+    ]
+   },
+   {
+    "id": 7897,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Small"
+     }
+    ]
+   },
+   {
+    "id": 7898,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Medium"
+     }
+    ]
+   },
+   {
+    "id": 7899,
+    "attributes": [
+     {
+      "name": "size",
+      "value": "Adult Large"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Competition orange short GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/competition-orange-short-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7912,
+  "name": "Green socks GK",
+  "slug": "green-socks-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/green-socks-gk/",
+  "sku": "Green socks GK",
+  "short_description": "<p>Socks metro green</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "1500",
+   "regular_price": "1500",
+   "sale_price": "1500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>15.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7866,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/green-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "green-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 40,
+      "name": "Small",
+      "slug": "small"
+     },
+     {
+      "id": 41,
+      "name": "Medium",
+      "slug": "medium"
+     },
+     {
+      "id": 42,
+      "name": "Large",
+      "slug": "large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7913,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "large"
+     }
+    ]
+   },
+   {
+    "id": 7914,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "medium"
+     }
+    ]
+   },
+   {
+    "id": 7915,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "small"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Green socks GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/green-socks-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ },
+ {
+  "id": 7908,
+  "name": "Orange socks GK",
+  "slug": "orange-socks-gk",
+  "parent": 0,
+  "type": "variable",
+  "variation": "",
+  "permalink": "https://jacademylasvegas.com/producto/orange-socks-gk/",
+  "sku": "Orange socks GK",
+  "short_description": "<p>Socks metro orange</p>",
+  "description": "",
+  "on_sale": false,
+  "prices": {
+   "price": "1500",
+   "regular_price": "1500",
+   "sale_price": "1500",
+   "price_range": null,
+   "currency_code": "USD",
+   "currency_symbol": "$",
+   "currency_minor_unit": 2,
+   "currency_decimal_separator": ".",
+   "currency_thousand_separator": ",",
+   "currency_prefix": "$",
+   "currency_suffix": ""
+  },
+  "price_html": "<span class=\"woocommerce-Price-amount amount\"><span class=\"woocommerce-Price-currencySymbol\">&#036;</span>15.00</span>",
+  "average_rating": "0",
+  "review_count": 0,
+  "images": [
+   {
+    "id": 7869,
+    "src": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks.jpg",
+    "thumbnail": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-300x300.jpg",
+    "srcset": "https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks.jpg 1000w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-300x300.jpg 300w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-150x150.jpg 150w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-768x768.jpg 768w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-600x600.jpg 600w, https://jacademylasvegas.com/wp-content/uploads/2026/04/orange-socks-100x100.jpg 100w",
+    "sizes": "(max-width: 1000px) 100vw, 1000px",
+    "name": "orange-socks",
+    "alt": ""
+   }
+  ],
+  "categories": [
+   {
+    "id": 45,
+    "name": "Competitive Juventus Kit",
+    "slug": "competitive-juventus-kit",
+    "link": "https://jacademylasvegas.com/categoria-producto/competitive-juventus-kit/"
+   }
+  ],
+  "tags": [],
+  "brands": [],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Size",
+    "taxonomy": "pa_size",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 40,
+      "name": "Small",
+      "slug": "small"
+     },
+     {
+      "id": 41,
+      "name": "Medium",
+      "slug": "medium"
+     },
+     {
+      "id": 42,
+      "name": "Large",
+      "slug": "large"
+     }
+    ]
+   }
+  ],
+  "variations": [
+   {
+    "id": 7909,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "large"
+     }
+    ]
+   },
+   {
+    "id": 7910,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "medium"
+     }
+    ]
+   },
+   {
+    "id": 7911,
+    "attributes": [
+     {
+      "name": "Size",
+      "value": "small"
+     }
+    ]
+   }
+  ],
+  "grouped_products": [],
+  "has_options": true,
+  "is_purchasable": true,
+  "is_in_stock": true,
+  "is_on_backorder": false,
+  "low_stock_remaining": null,
+  "stock_availability": {
+   "text": "",
+   "class": "in-stock"
+  },
+  "sold_individually": false,
+  "add_to_cart": {
+   "text": "Select options",
+   "description": "Select options for &ldquo;Orange socks GK&rdquo;",
+   "url": "https://jacademylasvegas.com/producto/orange-socks-gk/",
+   "single_text": "Add to cart",
+   "minimum": 1,
+   "maximum": 9999,
+   "multiple_of": 1
+  },
+  "extensions": {}
+ }
+]

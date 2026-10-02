@@ -4,3 +4,6 @@
 .vscode/
 node_modules/
 *.log
+
+# Material interno de reuniones (repo público)
+Reunion_*
