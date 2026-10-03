@@ -653,9 +653,10 @@ table.data td.right, table.data th.right { text-align: right; }
   background: var(--white); border: 1px solid var(--border);
   border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
   display: flex; flex-direction: column;
-  transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .22s var(--ease);
+  /* Resalta sin moverse: la elevación de 3 px se percibía como un salto. */
+  transition: box-shadow .28s ease-out, border-color .28s ease-out;
 }
-.p-card:hover { box-shadow: var(--sh-3); transform: translateY(-3px); border-color: var(--border-strong); }
+.p-card:hover { box-shadow: var(--sh-2); border-color: var(--ink-300); }
 .p-card:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
 
 .p-media {
@@ -1015,6 +1016,13 @@ table.data td.right, table.data th.right { text-align: right; }
   *, *::before, *::after {
     animation-duration: .01ms !important;
     transition-duration: .01ms !important;
+  }
+  /* Con "efectos de animación" desactivados en el sistema, un resaltado
+     instantáneo se ve como un salto. Sombra y borde no son movimiento:
+     se dejan con una transición corta. */
+  .p-card, .kit-card, .store-tab, .btn, .chip {
+    transition-duration: .18s !important;
+    transform: none !important;
   }
 }
 
@@ -1413,9 +1421,9 @@ body.storefront .topbar-actions { margin-left: auto; }
   display: grid; grid-template-columns: 200px 1fr;
   background: var(--white); border: 1px solid var(--border); border-radius: var(--r-lg);
   overflow: hidden; cursor: pointer;
-  transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .22s var(--ease);
+  transition: box-shadow .28s ease-out, border-color .28s ease-out;
 }
-.kit-card:hover { box-shadow: var(--sh-3); transform: translateY(-2px); border-color: var(--border-strong); }
+.kit-card:hover { box-shadow: var(--sh-2); border-color: var(--ink-300); }
 .kit-card:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 2px; }
 .kit-media { position: relative; display: grid; place-items: center; min-height: 200px; overflow: hidden; }
 .kit-media .p-photo { padding: 7%; }
