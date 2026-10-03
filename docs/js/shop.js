@@ -511,7 +511,7 @@ const Shop = {
 
   refreshProduct() {
     const p = Store.product(this.sel.productId);
-    document.getElementById('modalBox').innerHTML = this.productHTML(p);
+    UI.rerenderModal(this.productHTML(p));
     this.bindProduct();
   },
 
@@ -684,7 +684,7 @@ const Shop = {
 
   refreshKit() {
     const p = Store.product(this.kit.productId);
-    document.getElementById('modalBox').innerHTML = this.kitHTML(p);
+    UI.rerenderModal(this.kitHTML(p));
     this.bindKit();
   },
 
@@ -770,6 +770,8 @@ const Shop = {
     const body = document.getElementById('cartBody');
     const foot = document.getElementById('cartFoot');
     const cart = Store.cart;
+    const scrollTop = body.scrollTop;   // se conserva al cambiar cantidades
+    requestAnimationFrame(() => { body.scrollTop = scrollTop; });
 
     if (!cart.length) {
       body.innerHTML = UI.empty(

@@ -222,6 +222,74 @@ const sections = {
     ok(en === 'Settings', 'cambio de idioma repinta el panel', en);
   },
 
+  async desplazamiento(page) {
+    // Ventana baja (500 px) para que el modal necesite desplazarse, como en un portátil.
+    await page.setViewportSize({ width: 1100, height: 500 });
+    await page.click('#btnShop');
+    await page.evaluate(() => Store.clearCart());
+    const body = '#modalBox .modal-body';
+    const scrollOf = () => page.locator(body).evaluate(e => e.scrollTop);
+    // Pulsar sin que la herramienta desplace el elemento a la vista: así se
+    // mide solo lo que hace la aplicación.
+    const tap = sel => page.locator(sel).evaluate(el => { el.focus({ preventScroll: true }); el.click(); });
+    const pick = (sel, v) => page.locator(sel).evaluate((el, v) => { el.focus({ preventScroll: true }); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); }, v);
+
+    // Kit: elegir talla por pieza
+    await page.click('.kit-card');
+    await page.waitForSelector('#addKit');
+    await page.locator(body).evaluate(e => { e.scrollTop = 10000; });
+    const kMax = await scrollOf();
+    await pick('[data-comp="camp-jersey"]', 'YM');
+    await page.waitForTimeout(100);
+    ok(kMax > 100 && Math.abs(await scrollOf() - kMax) <= 2, 'kit: elegir talla de una pieza conserva el desplazamiento', { antes: kMax, despues: await scrollOf() });
+    await page.locator(body).evaluate(e => { e.scrollTop = 10000; });
+    await tap('[data-quick="YL"]');
+    await page.waitForTimeout(100);
+    ok(Math.abs(await scrollOf() - kMax) <= 2, 'kit: "misma talla para todo" conserva el desplazamiento', await scrollOf());
+    ok(await page.evaluate(() => document.activeElement && document.activeElement.dataset.quick) === 'YL', 'kit: el foco sigue en el botón pulsado');
+    await page.keyboard.press('Escape');
+
+    // Pieza suelta: elegir talla y cantidad (posición intermedia: el contenido
+    // cambia de alto al elegir talla y el máximo puede moverse unos píxeles)
+    await page.click('.p-card[data-id="camp-jersey"]');
+    await page.waitForSelector('#addCart');
+    await page.locator(body).evaluate(e => { e.scrollTop = 150; });
+    const win = await page.evaluate(() => window.scrollY);
+    await tap('.size-btn[data-size="YM"]');
+    await page.waitForTimeout(100);
+    ok(Math.abs(await scrollOf() - 150) <= 2, 'pieza: elegir talla conserva el desplazamiento', { antes: 150, despues: await scrollOf() });
+    await tap('#qPlus');
+    await page.waitForTimeout(100);
+    ok(Math.abs(await scrollOf() - 150) <= 2, 'pieza: cambiar cantidad conserva el desplazamiento', await scrollOf());
+    ok(await page.evaluate(() => document.activeElement && document.activeElement.id) === 'qPlus', 'pieza: el foco sigue en el botón +');
+    ok(await page.evaluate(() => window.scrollY) === win, 'la página de fondo no se mueve');
+    await page.click('#addCart');
+    await page.waitForSelector('#cartDrawer.open');
+
+    // Carrito con varias líneas: cambiar cantidad
+    for (const s of ['YS', 'YL', 'S', 'M']) await page.evaluate(sz => Store.addItem('camp-jersey', Store.variantOf('camp-jersey', sz).id, 1), s);
+    await page.evaluate(() => Shop.renderCart());
+    await page.locator('#cartBody').evaluate(e => { e.scrollTop = 10000; });
+    const cMax = await page.locator('#cartBody').evaluate(e => e.scrollTop);
+    await page.locator('[data-inc]').last().click();
+    await page.waitForTimeout(150);
+    ok(cMax > 50 && Math.abs(await page.locator('#cartBody').evaluate(e => e.scrollTop) - cMax) <= 2, 'carrito: cambiar cantidad conserva el desplazamiento', { antes: cMax, despues: await page.locator('#cartBody').evaluate(e => e.scrollTop) });
+    await page.evaluate(() => { Shop.closeCart(); Store.clearCart(); });
+
+    // Entregas: cambiar talla en el formulario
+    await page.click('#btnAdmin');
+    await page.click('.side-link[data-page="deliveries"]');
+    await page.click('[data-deliver="r9"]');
+    await page.waitForSelector('#delGo');
+    await page.locator(body).evaluate(e => { e.scrollTop = 10000; });
+    const dMax = await scrollOf();
+    await pick('[data-ov="soc-black"]', 'L');
+    await page.waitForTimeout(100);
+    ok(dMax > 50 && Math.abs(await scrollOf() - dMax) <= 2, 'entregas: cambiar talla conserva el desplazamiento', { antes: dMax, despues: await scrollOf() });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1366, height: 900 });
+  },
+
   async permisos(page) {
     const roles = await page.evaluate(() => Store.state.users.map(u => u.role));
     ok(true, 'HALLAZGO: no hay inicio de sesión ni permisos en el panel; el rol es un selector (' + roles.join(', ') + ')');

@@ -1232,7 +1232,7 @@ const Admin = {
     if (!plan) return;
     const e = plan.entry;
 
-    UI.modal(`
+    const html = `
       <div class="modal-head">
         <div>
           <h2>${I18N.t('adm.del.formTitle', { player: UI.esc(e.player) })}</h2>
@@ -1264,7 +1264,9 @@ const Admin = {
       <div class="modal-foot">
         <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
         <button class="btn btn-primary" id="delGo" ${plan.ok ? '' : 'disabled'}>${I18N.t('adm.del.confirmBtn')}</button>
-      </div>`);
+      </div>`;
+    // Al cambiar una talla se repinta conservando el desplazamiento.
+    if (document.getElementById('delGo')) UI.rerenderModal(html); else UI.modal(html);
 
     document.querySelectorAll('[data-ov]').forEach(s => s.onchange = () => {
       overrides[s.dataset.ov] = s.value;

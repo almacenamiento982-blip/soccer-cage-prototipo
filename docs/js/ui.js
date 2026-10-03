@@ -239,6 +239,36 @@ const UI = {
     if (f) setTimeout(() => f.focus(), 60);
   },
 
+  /** Repinta un modal abierto conservando el desplazamiento y el foco:
+      sin esto, cada clic en una talla devolvía la ventana al inicio. */
+  rerenderModal(html) {
+    const box = document.getElementById('modalBox');
+    const body = box.querySelector('.modal-body');
+    const top = body ? body.scrollTop : 0;
+    // El elemento con foco se identifica por id o por su primer atributo data-*
+    // (los botones de talla no tienen id).
+    const a = document.activeElement;
+    let sel = '';
+    if (a && box.contains(a)) {
+      if (a.id) sel = '#' + a.id;
+      else {
+        const k = Object.keys(a.dataset || {})[0];
+        if (k) sel = `[data-${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}="${String(a.dataset[k]).replace(/"/g, '\\"')}"]`;
+      }
+    }
+    box.innerHTML = html;
+    if (sel) {
+      const el = box.querySelector(sel);
+      if (el) el.focus({ preventScroll: true });
+    }
+    // Después de enfocar: algunos navegadores desplazan igualmente al elemento.
+    const nb = box.querySelector('.modal-body');
+    if (nb) {
+      nb.scrollTop = top;
+      requestAnimationFrame(() => { nb.scrollTop = top; });
+    }
+  },
+
   closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
     document.body.classList.remove('no-scroll');

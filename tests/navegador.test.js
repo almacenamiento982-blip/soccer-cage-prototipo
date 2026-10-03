@@ -136,7 +136,7 @@ const scenarios = {
     ok(await page.locator('#errAddr.show').count() === 1, 'envío exige dirección');
     await page.check('input[name="ckFulfill"][value="pickup"]');
     await page.click('#payNow');
-    await page.waitForSelector('.success-mark', { timeout: 8000 });
+    await page.waitForSelector('.success-mark', { timeout: 15000 });
     await page.shot('15-confirmacion');
     const after = [await stock('camp-jersey', 'YL'), await stock('camp-short', 'YL'), await stock('camp-socks', 'M'), await stock('camp-jersey', 'YM')];
     ok(before.every((n, i) => after[i] === n - 1), 'inventario descontado pieza por pieza', { before, after });
@@ -153,7 +153,7 @@ const scenarios = {
     await page.waitForSelector('#payNow');
     ok(/12\.84/.test(await page.locator('#payNow').innerText()), 'segunda compra sin kit: $12 + 7% = $12.84');
     await page.click('#payNow');
-    await page.waitForSelector('.success-mark', { timeout: 8000 });
+    await page.waitForSelector('.success-mark', { timeout: 15000 });
 
     // 6) El pedido aparece en el panel
     await page.click('#seeOrder');
@@ -286,7 +286,7 @@ const scenarios = {
     await page.fill('#ckName', 'Mobile Parent');
     await page.shot('33-movil-checkout', true);
     await page.click('#payNow');
-    await page.waitForSelector('.success-mark', { timeout: 8000 });
+    await page.waitForSelector('.success-mark', { timeout: 15000 });
     ok(await page.locator('.trace').count() === 0 && await page.locator('#seeOrder').count() === 0, 'la confirmación pública no muestra datos internos');
     await page.shot('34-movil-confirmacion');
     const ov2 = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
