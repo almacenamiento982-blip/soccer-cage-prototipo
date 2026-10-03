@@ -15,6 +15,14 @@ const App = {
     I18N.init();
     Store.load();
 
+    // Avisos del almacenamiento: lleno o no disponible, y conflicto entre pestañas.
+    Store.onSaveError = () => UI.toast('danger', I18N.t('sys.saveFailTitle'), I18N.t('sys.saveFailBody'));
+    Store.onConflict = () => { this.refreshAll(); UI.toast('warn', I18N.t('sys.conflictTitle'), I18N.t('sys.conflictBody')); };
+    // Otra pestaña guardó: se adopta su estado para no trabajar sobre datos viejos.
+    window.addEventListener('storage', e => {
+      if (e.key === 'soccercage_rev' && Store.syncFromStorage()) this.refreshAll();
+    });
+
     const wanted = new URLSearchParams(location.search).get('store');
     if (wanted && Store.storeCfg(wanted)) {
       this.storefront = wanted;

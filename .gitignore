@@ -7,3 +7,5 @@ node_modules/
 
 # Material interno de reuniones (repo público)
 Reunion_*
+tests/node_modules/
+tests/shots/

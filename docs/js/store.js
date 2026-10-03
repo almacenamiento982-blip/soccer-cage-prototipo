@@ -8,7 +8,9 @@
    ============================================================ */
 
 const DB_KEY = 'soccercage_db_v2';
+const REV_KEY = 'soccercage_rev';
 const DB_SCHEMA = 5;
+const ORDER_FLOW = ['pendiente', 'procesando', 'enviado', 'completado'];
 
 const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -17,6 +19,8 @@ const Store = {
   state: null,
   _clock: null,     // fecha simulada (solo para construir el historial de demo)
   _silent: false,   // agrupa escrituras durante cargas masivas
+  onSaveError: null,  // avisos a la interfaz: el almacenamiento falló
+  onConflict: null,   // otra pestaña guardó antes; esta operación se descartó
 
   /* ---------- Persistencia ---------- */
   versionTag() {
@@ -29,9 +33,15 @@ const Store = {
       const raw = localStorage.getItem(DB_KEY);
       if (raw) {
         const st = JSON.parse(raw);
-        if (st && st.version === this.versionTag() && st.products && st.products.length) {
-          this.state = st;
-          return;
+        if (st && st.products && st.products.length) {
+          const [schema] = String(st.version || '').split(':');
+          if (Number(schema) === DB_SCHEMA) {
+            this.state = st;
+            this.state.rev = Number(localStorage.getItem(REV_KEY) || st.rev || 0);
+            // Un catálogo reimportado actualiza precios y fotos sin borrar lo demás.
+            if (st.version !== this.versionTag()) { this.mergeCatalog(); this.state.version = this.versionTag(); this.save(); }
+            return;
+          }
         }
       }
     } catch (e) {
@@ -40,20 +50,77 @@ const Store = {
     this.reset();
   },
 
+  /**
+   * Guarda el estado. Cada escritura lleva un número de revisión: si otra
+   * pestaña guardó después de que esta cargó, esta escritura se descarta y
+   * se recarga lo guardado, en vez de pisar el trabajo de la otra pestaña.
+   */
   save() {
     if (this._silent) return true;
     try {
+      const disk = Number(localStorage.getItem(REV_KEY) || 0);
+      const mine = Number(this.state.rev || 0);
+      if (disk && mine && disk !== mine) {
+        const raw = localStorage.getItem(DB_KEY);
+        if (raw) { this.state = JSON.parse(raw); this.state.rev = disk; }
+        if (this.onConflict) this.onConflict();
+        return false;
+      }
+      this.state.rev = (disk || mine) + 1;
       localStorage.setItem(DB_KEY, JSON.stringify(this.state));
+      localStorage.setItem(REV_KEY, String(this.state.rev));
       return true;
     } catch (e) {
       console.warn('No se pudo guardar en localStorage.', e);
+      if (this.onSaveError) this.onSaveError(e);
       return false;
     }
+  },
+
+  /** Otra pestaña guardó: se adopta su estado. Devuelve true si cambió algo. */
+  syncFromStorage() {
+    try {
+      const disk = Number(localStorage.getItem(REV_KEY) || 0);
+      if (!disk || disk === Number(this.state.rev || 0)) return false;
+      const raw = localStorage.getItem(DB_KEY);
+      if (!raw) return false;
+      this.state = JSON.parse(raw);
+      this.state.rev = disk;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  /** Incorpora un catálogo reimportado: añade productos nuevos y actualiza
+      datos de catálogo de los existentes sin tocar stock, costo ni mínimos. */
+  mergeCatalog() {
+    if (typeof CATALOG === 'undefined') return;
+    const fresh = SEED.buildProducts();
+    CATALOG.products.forEach(c => {
+      const p = this.product(c.id);
+      if (!p) {
+        const np = fresh.find(x => x.id === c.id);
+        if (!np) return;
+        np.variants.forEach(v => { v.stock = 0; });
+        this.state.products.push(np);
+        return;
+      }
+      ['name', 'price', 'image', 'images', 'description', 'stores', 'categories', 'line', 'colorHex'].forEach(k => { if (c[k] !== undefined) p[k] = clone(c[k]); });
+      if (c.components) p.components = clone(c.components);
+      (c.sizes || []).forEach(size => {
+        if (!p.variants.some(v => v.size === size)) {
+          p.variants.push({ id: p.id + '-' + size, sku: p.sku + (size === 'U' ? '' : '-' + size), size, stock: 0, reserved: 0 });
+        }
+      });
+      this.sortSizes(p.variants);
+    });
   },
 
   reset() {
     this.state = {
       version: this.versionTag(),
+      rev: 0,
       products:  SEED.buildProducts(),
       stores:    clone(SEED.stores),
       programs:  clone(SEED.programs),
@@ -252,6 +319,7 @@ const Store = {
   applyMovement({ variantId, type, qty, reason, ref, user }) {
     const found = this.findVariant(variantId);
     if (!found) return { ok: false, error: I18N.t('err.variantNotFound') };
+    if (type !== 'entrada' && type !== 'salida') return { ok: false, error: I18N.t('err.typeInvalid') };
     qty = Math.floor(Number(qty) || 0);
     if (qty <= 0) return { ok: false, error: I18N.t('err.qtyInvalid') };
 
@@ -406,6 +474,8 @@ const Store = {
     if (!p || !v || !p.active || !p.stores.includes(this.state.currentStore)) {
       return { ok: false, error: I18N.t('err.notAvailable') };
     }
+    qty = Math.floor(Number(qty) || 0);
+    if (qty < 1) return { ok: false, error: I18N.t('err.qtyInvalid') };
 
     const err = this._fits([[variantId, qty]]);
     if (err) return { ok: false, error: err };
@@ -438,7 +508,8 @@ const Store = {
       comps.push({ productId: part.product.id, variantId: v.id, qty: part.qty, name: part.product.name, size: v.size, sku: v.sku });
     }
 
-    qty = qty || 1;
+    qty = Math.floor(Number(qty) || 1);
+    if (qty < 1) return { ok: false, error: I18N.t('err.qtyInvalid') };
     const err = this._fits(comps.map(c => [c.variantId, c.qty * qty]));
     if (err) return { ok: false, error: err };
 
@@ -457,6 +528,7 @@ const Store = {
   updateLineQty(lineId, qty) {
     const line = this.cart.find(l => l.lineId === lineId);
     if (!line) return { ok: false };
+    qty = Math.floor(Number(qty) || 0);
     if (qty <= 0) return this.removeLine(lineId);
 
     const err = this._fits(this.lineUnits(Object.assign({}, line, { qty })), lineId);
@@ -580,9 +652,17 @@ const Store = {
   },
 
   /* ---------- Gestión de pedidos ---------- */
+  /** Transiciones permitidas: solo el siguiente paso del flujo, o cancelar. Cancelado es final. */
+  canTransition(from, to) {
+    if (from === 'cancelado') return false;
+    if (to === 'cancelado') return true;
+    return ORDER_FLOW.indexOf(to) === ORDER_FLOW.indexOf(from) + 1;
+  },
+
   setOrderStatus(orderId, status) {
     const o = this.state.orders.find(x => x.id === orderId);
-    if (!o) return { ok: false };
+    if (!o) return { ok: false, error: I18N.t('err.notAvailable') };
+    if (!this.canTransition(o.status, status)) return { ok: false, error: I18N.t('err.statusInvalid') };
     const prev = o.status;
     o.status = status;
 
@@ -605,18 +685,54 @@ const Store = {
      PRODUCTOS
      data.sizes = [{ size, stock }] para piezas; data.components para kits.
      ============================================================ */
-  saveProduct(data) {
+  /** Las mismas reglas que el formulario, para que ninguna vía las esquive. */
+  validateProduct(data, existing) {
     const sizes = data.sizes || [];
+    const isKit = data.kind === 'kit';
+    if (!String(data.name || '').trim()) return I18N.t('err.productName');
+    if (!String(data.sku || '').trim()) return I18N.t('err.productSku');
+    if (this.state.products.some(p => p.sku === data.sku && (!existing || p.id !== existing.id))) return I18N.t('err.skuDup', { sku: data.sku });
+    if (!SEED.kinds.includes(data.kind)) return I18N.t('err.kindInvalid');
+    if (!(Number(data.price) >= 0) || !(Number(data.cost || 0) >= 0) || !(Number(data.minStock || 0) >= 0)) return I18N.t('err.priceInvalid');
+    if ((data.stores || []).some(s => !this.storeCfg(s))) return I18N.t('err.storeInvalid');
+    if (isKit) {
+      const comps = data.components || [];
+      if (!comps.length) return I18N.t('err.kitNoComponents');
+      if (new Set(comps.map(c => c.productId)).size !== comps.length) return I18N.t('err.kitDupComponent');
+      for (const c of comps) {
+        const x = this.product(c.productId);
+        if (!x || this.isKit(x)) return I18N.t('err.kitComponentInvalid');
+        if (!(Math.floor(Number(c.qty)) >= 1)) return I18N.t('err.qtyInvalid');
+      }
+    } else {
+      if (!sizes.length) return I18N.t('err.sizesRequired');
+      if (sizes.some(s => !SEED.sizeScale.includes(s.size)) || new Set(sizes.map(s => s.size)).size !== sizes.length) return I18N.t('err.sizesInvalid');
+    }
+    return null;
+  },
+
+  saveProduct(data) {
+    const existing = data.id ? this.product(data.id) : null;
+    if (data.id && !existing) return { ok: false, error: I18N.t('err.notAvailable') };
+    const err = this.validateProduct(data, existing);
+    if (err) return { ok: false, error: err };
+
+    const sizes = (data.sizes || []).map(s => ({ size: s.size, stock: Math.max(0, Math.floor(Number(s.stock) || 0)) }));
     const fields = Object.assign({}, data);
     delete fields.sizes;
     delete fields.id;
+    fields.name = fields.name.trim();
+    fields.sku = fields.sku.trim();
+    fields.price = round2(fields.price);
+    fields.cost = round2(fields.cost || 0);
+    fields.minStock = Math.floor(Number(fields.minStock) || 0);
+    if (fields.components) fields.components = fields.components.map(c => ({ productId: c.productId, qty: Math.floor(Number(c.qty)) }));
 
     const skuFor = (base, size) => base + (size === 'U' ? '' : '-' + size);
     const isKit = fields.kind === 'kit';
 
-    if (data.id) {
-      const p = this.product(data.id);
-      if (!p) return { ok: false, error: I18N.t('err.notAvailable') };
+    if (existing) {
+      const p = existing;
       Object.assign(p, fields);
 
       if (isKit) {
@@ -637,7 +753,7 @@ const Store = {
         // Los cambios manuales de stock quedan asentados como conteo.
         sizes.forEach(({ size, stock }) => {
           const v = p.variants.find(x => x.size === size);
-          const diff = Math.max(0, Math.floor(stock || 0)) - v.stock;
+          const diff = stock - v.stock;
           if (diff) this.applyMovement({
             variantId: v.id, type: diff > 0 ? 'entrada' : 'salida',
             qty: Math.abs(diff), reason: 'count', ref: 'EDIT-' + p.sku
@@ -658,9 +774,8 @@ const Store = {
 
     // El stock inicial también deja rastro.
     sizes.forEach(({ size, stock }) => {
-      const q = Math.max(0, Math.floor(stock || 0));
-      if (!isKit && q > 0) this.applyMovement({
-        variantId: p.id + '-' + size, type: 'entrada', qty: q, reason: 'initial', ref: 'ALTA-' + p.sku
+      if (!isKit && stock > 0) this.applyMovement({
+        variantId: p.id + '-' + size, type: 'entrada', qty: stock, reason: 'initial', ref: 'ALTA-' + p.sku
       });
     });
 
@@ -786,6 +901,23 @@ const Store = {
     return { ok: true, entry: e };
   },
 
+  /** Separa una línea CSV respetando comillas ("Doe, John") y el separador , ; o tabulador. */
+  parseCsvLine(line) {
+    const sep = line.includes('\t') ? '\t' : (line.includes(';') && !line.includes(',') ? ';' : ',');
+    const out = [];
+    let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (q && line[i + 1] === '"') { cur += '"'; i++; }
+        else q = !q;
+      } else if (ch === sep && !q) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(x => x.trim());
+  },
+
   /**
    * Importa una lista exportada de PlayMetrics (CSV).
    * Columnas: jugador, correo del acudiente, equipo, posición, talla, talla de medias.
@@ -797,7 +929,7 @@ const Store = {
     const rows = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     let added = 0, skipped = 0;
     rows.forEach((line, i) => {
-      const c = line.split(/[,;\t]/).map(x => x.trim().replace(/^"|"$/g, ''));
+      const c = this.parseCsvLine(line);
       if (i === 0 && /player|jugador|name|nombre/i.test(c[0])) return;   // encabezado
       if (!c[0]) { skipped++; return; }
       const dupe = this.state.roster.some(e =>

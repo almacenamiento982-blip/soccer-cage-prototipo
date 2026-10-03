@@ -144,7 +144,7 @@ const I18N = {
 
     // ---------- Confirmación de pedido ----------
     'confirm.title':     { es: '¡Pedido confirmado!', en: 'Order confirmed!' },
-    'confirm.sentTo':    { es: 'Enviamos la confirmación a {email}', en: 'We sent the confirmation to {email}' },
+    'confirm.sentTo': { es: 'Pedido registrado a nombre de {email}', en: 'Order recorded under {email}' },
     'confirm.orderNumber': { es: 'Número de pedido', en: 'Order number' },
     'confirm.date':      { es: 'Fecha', en: 'Date' },
     'confirm.paymentMethod': { es: 'Método de pago', en: 'Payment method' },
@@ -1088,5 +1088,24 @@ const I18N = {
     'store.generic': { es: 'Tienda', en: 'Store' },
     'adm.products.costLine': { es: 'costo {cost}', en: 'cost {cost}' },
     'adm.pf.createdBodyOne': { es: '{name} · 1 talla. El stock inicial quedó registrado como entrada.', en: '{name} · 1 size. Initial stock was logged as a stock-in.' },
+
+    // ---------- Sistema: almacenamiento y validaciones del núcleo ----------
+    'sys.saveFailTitle': { es: 'No se pudo guardar', en: 'Could not save' },
+    'sys.saveFailBody': { es: 'El navegador no permite guardar (almacenamiento lleno o bloqueado). El último cambio no quedó registrado.', en: 'The browser cannot save (storage full or blocked). The last change was not recorded.' },
+    'sys.conflictTitle': { es: 'Datos actualizados en otra pestaña', en: 'Data updated in another tab' },
+    'sys.conflictBody': { es: 'Otra pestaña guardó antes. Se cargó lo más reciente; repite la operación.', en: 'Another tab saved first. The latest data was loaded; please repeat the operation.' },
+    'err.typeInvalid': { es: 'Tipo de movimiento inválido.', en: 'Invalid movement type.' },
+    'err.statusInvalid': { es: 'Ese cambio de estado no está permitido.', en: 'That status change is not allowed.' },
+    'err.productName': { es: 'Indica un nombre.', en: 'Enter a name.' },
+    'err.productSku': { es: 'Indica el SKU.', en: 'Enter the SKU.' },
+    'err.skuDup': { es: 'Ya existe un producto con el SKU {sku}.', en: 'A product with SKU {sku} already exists.' },
+    'err.kindInvalid': { es: 'Tipo de prenda inválido.', en: 'Invalid garment type.' },
+    'err.priceInvalid': { es: 'Precio, costo y mínimo deben ser números de cero o más.', en: 'Price, cost, and minimum must be numbers of zero or more.' },
+    'err.storeInvalid': { es: 'Tienda inexistente.', en: 'Store does not exist.' },
+    'err.kitNoComponents': { es: 'Añade al menos una pieza al kit.', en: 'Add at least one piece to the kit.' },
+    'err.kitDupComponent': { es: 'Hay una pieza repetida: usa la cantidad en vez de repetirla.', en: 'A piece is listed twice: use the quantity instead.' },
+    'err.kitComponentInvalid': { es: 'Una pieza del kit no existe o es otro kit.', en: 'A kit piece does not exist or is another kit.' },
+    'err.sizesRequired': { es: 'Marca al menos una talla.', en: 'Check at least one size.' },
+    'err.sizesInvalid': { es: 'Hay una talla desconocida o repetida.', en: 'There is an unknown or repeated size.' },
   }
 };

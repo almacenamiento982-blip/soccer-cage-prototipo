@@ -1,0 +1,14 @@
+{
+  "name": "soccer-cage-tests",
+  "private": true,
+  "description": "Pruebas del prototipo: núcleo de inventario, casos límite e interfaz en navegador real.",
+  "scripts": {
+    "serve": "node serve.js",
+    "test:nucleo": "node nucleo.test.js && node casos-limite.test.js && node i18n-check.js",
+    "test:navegador": "node navegador.test.js && node navegador-casos-limite.test.js",
+    "test": "npm run test:nucleo && npm run test:navegador"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0"
+  }
+}
