@@ -196,6 +196,7 @@ const Shop = {
       </div>`;
     document.getElementById('acctOut').onclick = () => {
       Store.signOut();
+      this.form = null;
       this.renderAccount();
       this.renderCart();
       UI.toast('info', I18N.t('acct.signedOutTitle'), I18N.t('acct.signedOutBody'));
@@ -256,6 +257,7 @@ const Shop = {
         return;
       }
       UI.closeModal();
+      this.form = null;   // otra cuenta: el borrador del pago anterior ya no aplica
       this.renderAccount();
       this.renderCart();
       const src = Store.kitSource(r.customer, this.store.id);
@@ -266,7 +268,11 @@ const Shop = {
     };
 
     document.getElementById('acGo').onclick = submit;
-    document.getElementById('modalBox').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+    // Enter se enlaza a los campos de ESTE formulario, no a la ventana modal:
+    // la ventana se reutiliza y el manejador seguiría vivo en los siguientes.
+    ['acEmail', 'acName', 'acPhone'].forEach(id => {
+      document.getElementById(id).onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } };
+    });
   },
 
   /* ---------- Kits ---------- */
@@ -883,8 +889,13 @@ const Shop = {
 
     const st = this.store;
     const c = Store.session;
-    this.fulfill = st.pickup ? 'pickup' : 'shipping';
-    this.form = { name: c ? c.name : '', email: c ? c.email : '', phone: c && c.phone !== '—' ? c.phone : '' };
+    // Lo ya escrito se conserva si el formulario se cierra y se vuelve a abrir.
+    if (!this.form || this.form.store !== st.id) this.form = { store: st.id };
+    const f = this.form;
+    if (!f.email && c) f.email = c.email;
+    if (!f.name && c) f.name = c.name;
+    if (!f.phone && c && c.phone !== '—') f.phone = c.phone;
+    if (!st[this.fulfill]) this.fulfill = st.pickup ? 'pickup' : 'shipping';
     this.closeCart();
     UI.modal(this.checkoutHTML(), '');
     this.bindCheckout();
@@ -946,18 +957,18 @@ const Shop = {
           <div class="form-grid">
             <div class="field span-2">
               <label for="ckEmail">${I18N.t('checkout.email')} <span class="req">*</span></label>
-              <input class="input" id="ckEmail" type="email" value="${UI.esc(f.email)}" placeholder="name@email.com" autocomplete="email" ${f.email ? '' : 'data-autofocus'}>
+              <input class="input" id="ckEmail" type="email" value="${UI.esc(f.email || '')}" placeholder="name@email.com" autocomplete="email" ${f.email ? '' : 'data-autofocus'}>
               <div class="hint">${I18N.t(st.kitRequired ? 'checkout.emailHintKit' : 'checkout.emailHint')}</div>
               <div class="err-msg" id="errEmail">${I18N.t('checkout.emailErr')}</div>
             </div>
             <div class="field">
               <label for="ckName">${I18N.t('checkout.fullName')} <span class="req">*</span></label>
-              <input class="input" id="ckName" value="${UI.esc(f.name)}" autocomplete="name">
+              <input class="input" id="ckName" value="${UI.esc(f.name || '')}" autocomplete="name">
               <div class="err-msg" id="errName">${I18N.t('checkout.fullNameErr')}</div>
             </div>
             <div class="field">
               <label for="ckPhone">${I18N.t('checkout.phone')}</label>
-              <input class="input" id="ckPhone" value="${UI.esc(f.phone)}" placeholder="(305) 555-0100" autocomplete="tel">
+              <input class="input" id="ckPhone" value="${UI.esc(f.phone || '')}" placeholder="(305) 555-0100" autocomplete="tel">
             </div>
           </div>
 
@@ -971,22 +982,22 @@ const Shop = {
             <div class="form-grid">
               <div class="field span-2">
                 <label for="ckAddr">${I18N.t('checkout.address')} <span class="req">*</span></label>
-                <input class="input" id="ckAddr" placeholder="${I18N.t('checkout.addressPh')}" autocomplete="street-address">
+                <input class="input" id="ckAddr" value="${UI.esc(f.addr || '')}" placeholder="${I18N.t('checkout.addressPh')}" autocomplete="street-address">
                 <div class="err-msg" id="errAddr">${I18N.t('checkout.addressErr')}</div>
               </div>
               <div class="field">
                 <label for="ckCity">${I18N.t('checkout.city')} <span class="req">*</span></label>
-                <input class="input" id="ckCity" autocomplete="address-level2">
+                <input class="input" id="ckCity" value="${UI.esc(f.city || '')}" autocomplete="address-level2">
                 <div class="err-msg" id="errCity">${I18N.t('checkout.cityErr')}</div>
               </div>
               <div class="form-grid tight">
                 <div class="field">
                   <label for="ckState">${I18N.t('checkout.state')}</label>
-                  <input class="input" id="ckState" value="FL" maxlength="2" autocomplete="address-level1" style="text-transform:uppercase">
+                  <input class="input" id="ckState" value="${UI.esc(f.state || 'FL')}" maxlength="2" autocomplete="address-level1" style="text-transform:uppercase">
                 </div>
                 <div class="field">
                   <label for="ckZip">${I18N.t('checkout.zip')} <span class="req">*</span></label>
-                  <input class="input" id="ckZip" inputmode="numeric" placeholder="33131" autocomplete="postal-code">
+                  <input class="input" id="ckZip" value="${UI.esc(f.zip || '')}" inputmode="numeric" placeholder="33131" autocomplete="postal-code">
                   <div class="err-msg" id="errZip">${I18N.t('checkout.zipErr')}</div>
                 </div>
               </div>
@@ -1015,6 +1026,20 @@ const Shop = {
 
   bindCheckout() {
     const val = id => document.getElementById(id).value.trim();
+
+    const form = document.getElementById('checkoutForm');
+    // Borrador: lo escrito sobrevive a un cierre accidental del formulario.
+    form.addEventListener('input', () => Object.assign(this.form, {
+      email: val('ckEmail'), name: val('ckName'), phone: val('ckPhone'),
+      addr: val('ckAddr'), city: val('ckCity'), state: val('ckState'), zip: val('ckZip')
+    }));
+    // Enter en cualquier campo equivale a pulsar Pagar.
+    form.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'radio') {
+        e.preventDefault();
+        document.getElementById('payNow').click();
+      }
+    });
 
     document.querySelectorAll('input[name="ckFulfill"]').forEach(r => r.onchange = () => {
       this.fulfill = r.value;
@@ -1109,6 +1134,7 @@ const Shop = {
         return;
       }
 
+      this.form = null;
       this.successHTML(r);
       this.render();
       this.renderCart();

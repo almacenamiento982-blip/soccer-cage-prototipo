@@ -576,9 +576,15 @@ table.data td.right, table.data th.right { text-align: right; }
    TOASTS
    ============================================================ */
 .toast-zone {
-  position: fixed; right: var(--s5); bottom: var(--s5); z-index: 120;
-  display: flex; flex-direction: column; gap: var(--s2); max-width: 370px;
+  /* Arriba y centrado, bajo la barra: los botones de acción viven abajo
+     (pagar, confirmar, carrito), el menú a la izquierda y las acciones de
+     página arriba a la derecha. Aquí un aviso no tapa nada que se pulse. */
+  position: fixed; top: calc(var(--nav-h) + var(--s3)); left: 50%; transform: translateX(-50%);
+  width: min(370px, calc(100vw - 24px)); z-index: 120;
+  display: flex; flex-direction: column; gap: var(--s2);
+  pointer-events: none;
 }
+.toast { pointer-events: auto; cursor: pointer; }
 .toast {
   background: var(--ink-900); color: var(--white);
   border-radius: var(--r-md); padding: var(--s4) var(--s5);
@@ -592,9 +598,9 @@ table.data td.right, table.data th.right { text-align: right; }
 .toast .ico { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; }
 .toast-title { font-weight: 640; font-size: 13.5px; }
 .toast-msg { font-size: 12.5px; color: var(--ink-300); margin-top: 2px; }
-@keyframes slideIn { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
 .toast.hide { animation: slideOut .25s var(--ease) forwards; }
-@keyframes slideOut { to { opacity: 0; transform: translateX(28px); } }
+@keyframes slideOut { to { opacity: 0; transform: translateY(-10px); } }
 
 /* ============================================================
    TIENDA
@@ -993,7 +999,6 @@ table.data td.right, table.data th.right { text-align: right; }
   table.data thead th, table.data tbody td { padding: 10px var(--s3); }
   .modal-foot { flex-direction: column-reverse; }
   .modal-foot .btn { width: 100%; }
-  .toast-zone { right: var(--s3); left: var(--s3); bottom: var(--s3); max-width: none; }
   .page-head { flex-direction: column; align-items: stretch; }
   h1 { font-size: 20px; }
 }

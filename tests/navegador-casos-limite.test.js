@@ -12,7 +12,7 @@ const ok = (cond, label, extra) => {
 };
 const watch = page => {
   const issues = [];
-  page.on('pageerror', e => issues.push('pageerror: ' + e.message));
+  page.on('pageerror', e => issues.push('pageerror: ' + e.message + ' @ ' + String(e.stack || '').split(/\n/).slice(1, 3).join(' | ')));
   page.on('console', m => { if (m.type() === 'error') issues.push('console: ' + m.text()); });
   page.on('dialog', d => { issues.push('DIALOG: ' + d.message()); d.dismiss(); });
   return issues;
@@ -62,14 +62,14 @@ const sections = {
     await page.fill('#mvQty', '99999');
     await page.locator('#mvQty').dispatchEvent('input');
     ok(!(await page.locator('#mvSave').isEnabled()) && await page.locator('#mvPreview.alert-danger').count() === 1, 'movimiento: salida mayor que el stock bloqueada con aviso');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
     await page.click('.side-link[data-page="deliveries"]');
     await page.click('#delImport');
     await page.waitForSelector('#imGo');
     await page.click('#imGo');
     ok(await page.locator('#imGo').count() === 1 && (await page.locator('.toast').allInnerTexts()).join().includes('Nada que importar'), 'importar lista: vacío avisa y no cierra');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
   },
 
   async confirmaciones(page) {
@@ -77,21 +77,21 @@ const sections = {
     await page.click('.side-link[data-page="products"]');
     await page.locator('[data-toggle]').first().click();
     ok(await page.locator('#confirmYes').count() === 1, 'desactivar producto pide confirmación');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
     await page.click('.side-link[data-page="orders"]');
     await page.locator('[data-order]').first().click();
     await page.waitForSelector('#odCancel');
     await page.click('#odCancel');
     ok(await page.locator('#confirmYes').count() === 1, 'cancelar pedido pide confirmación');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
     await page.click('.side-link[data-page="dashboard"]');
     await page.click('#dashReset');
     ok(await page.locator('#confirmYes').count() === 1, 'reiniciar demo pide confirmación');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
     await page.click('.side-link[data-page="deliveries"]');
     await page.locator('[data-undo]').first().click();
     ok(await page.locator('#confirmYes').count() === 1, 'deshacer entrega pide confirmación');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
   },
 
   async inyeccion(page, issues) {
@@ -125,7 +125,7 @@ const sections = {
     const xss = await page.evaluate(() => [window.__xss, window.__xss2]);
     ok(!xss[0] && !xss[1], 'HTML en nombre de producto y de cliente no se ejecuta (se escapa)', xss);
     ok(issues.filter(i => i.startsWith('DIALOG')).length === 0, 'sin diálogos inesperados');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
     await page.evaluate(() => Store.clearCart());
   },
 
@@ -147,7 +147,7 @@ const sections = {
     await page.waitForSelector('.success-mark', { timeout: 8000 });
     const ordersAfter = await page.evaluate(() => Store.orders.length);
     ok(ordersAfter === ordersBefore + 1, 'dos clics seguidos en Pagar crean un solo pedido', { ordersBefore, ordersAfter });
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
   },
 
   async recarga(page) {
@@ -247,7 +247,7 @@ const sections = {
     await page.waitForTimeout(100);
     ok(Math.abs(await scrollOf() - kMax) <= 2, 'kit: "misma talla para todo" conserva el desplazamiento', await scrollOf());
     ok(await page.evaluate(() => document.activeElement && document.activeElement.dataset.quick) === 'YL', 'kit: el foco sigue en el botón pulsado');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
     // Pieza suelta: elegir talla y cantidad (posición intermedia: el contenido
     // cambia de alto al elegir talla y el máximo puede moverse unos píxeles)
@@ -286,8 +286,48 @@ const sections = {
     await pick('[data-ov="soc-black"]', 'L');
     await page.waitForTimeout(100);
     ok(dMax > 50 && Math.abs(await scrollOf() - dMax) <= 2, 'entregas: cambiar talla conserva el desplazamiento', { antes: dMax, despues: await scrollOf() });
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
     await page.setViewportSize({ width: 1366, height: 900 });
+  },
+
+  async formulariosProtegidos(page) {
+    await page.click('#btnShop');
+    await page.evaluate(() => { Store.clearCart(); Store.signIn({ email: 'laura.gomez@example.com' }); Shop.form = null; Shop.renderAccount(); });
+    await page.click('.p-card[data-id="camp-socks"]');
+    await page.click('.size-btn[data-size="M"]');
+    // Sin texto escrito, Escape cierra a la primera
+    await page.keyboard.press("Escape");
+    ok(await page.locator('#addCart').count() === 0, 'detalle sin texto escrito: Escape cierra a la primera');
+
+    await page.click('.p-card[data-id="camp-socks"]');
+    await page.click('.size-btn[data-size="M"]');
+    await page.click('#addCart');
+    await page.waitForSelector('#cartDrawer.open');
+    await page.click('#goCheckout');
+    await page.waitForSelector('#payNow');
+    await page.check('input[name="ckFulfill"][value="shipping"]');
+    await page.fill('#ckAddr', '123 Test St');
+    await page.mouse.click(5, 300);
+    await page.waitForTimeout(150);
+    ok(await page.locator('#payNow').count() === 1, 'pago: un clic fuera no cierra el formulario con datos escritos');
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(150);
+    ok(await page.locator('#payNow').count() === 1, 'pago: el primer Escape avisa y no cierra');
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(150);
+    ok(await page.locator('#payNow').count() === 0, 'pago: el segundo Escape cierra');
+    await page.evaluate(() => Shop.checkout());
+    await page.waitForSelector('#payNow');
+    ok(await page.inputValue('#ckAddr') === '123 Test St' && await page.locator('input[name="ckFulfill"][value="shipping"]').isChecked(), 'pago: al reabrir se conservan la dirección y la forma de entrega');
+    await page.fill('#ckCity', 'Miami');
+    await page.fill('#ckZip', '33131');
+    const before = await page.evaluate(() => Store.orders.length);
+    await page.locator('#ckZip').press('Enter');
+    await page.waitForSelector('.success-mark', { timeout: 15000 });
+    ok(await page.evaluate(() => Store.orders.length) === before + 1, 'pago: Enter en un campo completa la compra');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
+    await page.evaluate(() => Shop.checkout());
+    ok(await page.locator('#payNow').count() === 0, 'tras pagar, el carrito queda vacío y el borrador se descarta');
   },
 
   async permisos(page) {
@@ -315,7 +355,7 @@ const sections = {
     try { await fn(page, issues, ctx); }
     catch (e) {
       ok(false, 'excepción: ' + e.message.split('\n')[0], await diag(page));
-      await page.keyboard.press('Escape').catch(() => {});
+      await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); }).catch(() => {});
       await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); }).catch(() => {});
     }
   }

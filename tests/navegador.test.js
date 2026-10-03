@@ -67,14 +67,14 @@ const scenarios = {
     await page.click('[data-quick="YM"]');
     await page.shot('04-kit-lasvegas');
     ok(await page.locator('#addKit').isEnabled(), 'con talla YM para todo, el kit queda listo', await page.locator('#addKit').innerText());
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
     await page.click('.store-tab[data-store="camps"]');
     await page.click('.p-card[data-id="camp-jersey"]');
     await page.waitForSelector('#addCart');
     await page.shot('05-pieza-suelta');
     ok(await page.locator('.modal .alert-warn').count() === 1, 'la pieza suelta avisa que requiere el kit');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
     ok(page.issues.length === 0, 'sin errores ni advertencias en consola', page.issues);
     await page.context().close();
@@ -205,7 +205,7 @@ const scenarios = {
     await page.waitForSelector('#delGo');
     ok(!(await page.locator('#delGo').isEnabled()), 'entrega de academia bloqueada por falta de stock de una pieza');
     await page.shot('22-entrega-bloqueada');
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
     // Producto nuevo y kit nuevo
     await page.click('.side-link[data-page="products"]');

@@ -1107,5 +1107,10 @@ const I18N = {
     'err.kitComponentInvalid': { es: 'Una pieza del kit no existe o es otro kit.', en: 'A kit piece does not exist or is another kit.' },
     'err.sizesRequired': { es: 'Marca al menos una talla.', en: 'Check at least one size.' },
     'err.sizesInvalid': { es: 'Hay una talla desconocida o repetida.', en: 'There is an unknown or repeated size.' },
+
+    // ---------- Formularios con cambios sin guardar ----------
+    'ui.unsavedTitle': { es: 'Tienes datos sin guardar', en: 'You have unsaved data' },
+    'ui.unsavedClick': { es: 'Para cerrar usa Cancelar o la X; así no se pierde lo escrito por un clic accidental.', en: 'To close, use Cancel or the X, so an accidental click doesn’t lose what you typed.' },
+    'ui.unsavedEsc': { es: 'Pulsa Esc otra vez para cerrar y descartar lo escrito.', en: 'Press Esc again to close and discard what you typed.' },
   }
 };

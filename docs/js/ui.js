@@ -221,10 +221,12 @@ const UI = {
         ${msg ? `<div class="toast-msg">${UI.esc(msg)}</div>` : ''}
       </div>`;
     document.getElementById('toastZone').appendChild(el);
-    setTimeout(() => {
+    const close = () => {
       el.classList.add('hide');
       setTimeout(() => el.remove(), 260);
-    }, 3800);
+    };
+    el.onclick = close;   // un toque lo descarta
+    setTimeout(close, 3800);
   },
 
   /* ---------- Modal ---------- */
@@ -233,6 +235,8 @@ const UI = {
     const box = document.getElementById('modalBox');
     box.className = 'modal' + (size ? ' ' + size : '');
     box.innerHTML = html;
+    box.dataset.dirty = '';
+    UI._escAt = 0;
     ov.classList.add('open');
     document.body.classList.add('no-scroll');
     const f = box.querySelector('[data-autofocus]');
@@ -270,9 +274,36 @@ const UI = {
   },
 
   closeModal() {
+    const box = document.getElementById('modalBox');
     document.getElementById('modalOverlay').classList.remove('open');
     document.body.classList.remove('no-scroll');
-    document.getElementById('modalBox').innerHTML = '';
+    box.innerHTML = '';
+    box.dataset.dirty = '';
+    UI._escAt = 0;
+  },
+
+  /**
+   * Cierre pedido por un clic fuera o por Escape. Si el usuario ya escribió
+   * algo, un clic fuera no cierra, y Escape pide pulsarse dos veces: así un
+   * gesto accidental no borra un formulario a medio llenar. Los botones
+   * Cancelar y X cierran siempre (llaman a closeModal directamente).
+   */
+  requestClose(reason) {
+    if (!document.getElementById('modalOverlay').classList.contains('open')) return;
+    const box = document.getElementById('modalBox');
+    if (box.dataset.dirty === '1') {
+      if (reason === 'overlay') {
+        UI.toast('info', I18N.t('ui.unsavedTitle'), I18N.t('ui.unsavedClick'));
+        return;
+      }
+      const now = Date.now();
+      if (!UI._escAt || now - UI._escAt > 3500) {
+        UI._escAt = now;
+        UI.toast('info', I18N.t('ui.unsavedTitle'), I18N.t('ui.unsavedEsc'));
+        return;
+      }
+    }
+    UI.closeModal();
   },
 
   closeBtn() {
@@ -316,13 +347,22 @@ const UI = {
   }
 };
 
+/* Un modal con texto escrito queda "sucio": no se cierra por accidente. */
+document.addEventListener('input', e => {
+  const box = document.getElementById('modalBox');
+  const t = e.target;
+  if (!box || !box.contains(t)) return;
+  const typed = t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(t.type));
+  if (typed) box.dataset.dirty = '1';
+});
+
 /* Cierre de modal por clic fuera y tecla Escape */
 document.addEventListener('click', e => {
-  if (e.target.id === 'modalOverlay') UI.closeModal();
+  if (e.target.id === 'modalOverlay') UI.requestClose('overlay');
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    UI.closeModal();
+    UI.requestClose('esc');
     if (typeof Shop !== 'undefined') Shop.closeCart();
     document.getElementById('sidebar').classList.remove('open');
   }
