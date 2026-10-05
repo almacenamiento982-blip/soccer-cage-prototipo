@@ -19,7 +19,9 @@ const SEED = {};
 
 /* ---------- Tiendas (canales de venta sobre el mismo inventario) ---------- */
 /* Cada tienda tiene identidad propia (color, logo) y puede cobrar con su
-   propia cuenta de Stripe, como los campamentos en la plataforma actual. */
+   propia cuenta de Stripe, como los campamentos en la plataforma actual.
+   Entrega (reunión 05-10): todo sale por USPS; solo en el campamento,
+   quien compra allí mismo puede recibirlo en mano. */
 SEED.stores = [
   {
     id: 'camps', name: 'Juventus Summer Camps', short: 'Summer Camps', phase: 1, active: true,
@@ -30,13 +32,13 @@ SEED.stores = [
   {
     id: 'athletum', name: 'Athletum FC', short: 'Athletum', phase: 2, active: false,
     kitRequired: true, taxRate: 0.07,
-    pickup: true, shipping: true, shippingFlat: 9.00,
+    pickup: false, shipping: true, shippingFlat: 9.00,
     brand: '#0b0b0b', logo: null, stripeAccount: '', source: 'https://shop.athletumfc.com'
   },
   {
     id: 'lasvegas', name: 'Juventus Academy Las Vegas', short: 'Las Vegas', phase: 3, active: false,
     kitRequired: true, taxRate: 0.07,
-    pickup: true, shipping: true, shippingFlat: 9.00,
+    pickup: false, shipping: true, shippingFlat: 9.00,
     brand: '#e8174b', logo: null, stripeAccount: '', source: 'https://jacademylasvegas.com/shop/'
   }
 ];

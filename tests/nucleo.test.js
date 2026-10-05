@@ -108,6 +108,14 @@ ok(S.addKit('lv-kit-competitive', lvSel, 1, 'LV Kid').ok, 'kit de Las Vegas al c
 r = S.placeOrder({ name: 'LV Parent', email: 'lv@example.com', fulfillment: 'shipping', address: { line: '1 Main St', city: 'Las Vegas', state: 'NV', zip: '89101' } });
 ok(r.ok && r.order.total === round2(289 * 1.07 + 9), 'pedido LV: 289 + 7% + envío', r.order && r.order.total);
 function round2(n) { return Math.round(n * 100) / 100; }
+ok(!S.storeCfg('lasvegas').pickup && !S.storeCfg('athletum').pickup && S.storeCfg('camps').pickup, 'academias solo USPS; el campamento conserva la entrega en mano');
+S.setStore('lasvegas'); S.clearCart();
+ok(S.addKit('lv-kit-competitive', lvSel, 1, 'LV Kid 2').ok, 'otro kit de Las Vegas al carrito');
+r = S.placeOrder({ name: 'LV Parent', email: 'lv@example.com', fulfillment: 'pickup' });
+ok(!r.ok, 'Las Vegas rechaza "recoger en la academia"', r.error);
+r = S.placeOrder({ name: 'LV Parent', email: 'lv@example.com', fulfillment: 'shipping' });
+ok(!r.ok, 'envío sin dirección rechazado', r.error);
+S.clearCart();
 S.setStore('athletum');
 ok(S.variantOf('soc-white', 'M').stock === s0 - 1, 'la media blanca vendida en Las Vegas baja también para Athletum', [s0, sock.stock]);
 ok(S.hasKit(S.customerByEmail('lv@example.com'), 'lasvegas') && !S.hasKit(S.customerByEmail('lv@example.com'), 'athletum'), 'el kit comprado vale por tienda');

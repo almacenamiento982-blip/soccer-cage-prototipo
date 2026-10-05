@@ -61,6 +61,7 @@ const scenarios = {
     await page.waitForLoadState('networkidle');
     ok(await page.locator('.kit-card').count() === 2 && await page.locator('.p-card').count() === 13, 'Las Vegas: 2 kits y 13 piezas');
     ok(await page.locator('.sf-nav .sf-nav-link').count() >= 3, 'Las Vegas muestra el menú Kit · Jugador · Goalkeeper');
+    ok(!/Recoger/.test(await page.locator('.sf-perks').innerText()), 'Las Vegas no ofrece recoger en la academia: solo USPS');
     await page.shot('03-lasvegas', true);
 
     await page.click('.kit-card[data-kit="lv-kit-competitive"]');

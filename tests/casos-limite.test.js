@@ -162,6 +162,18 @@ st.version = '4:x'; mem2.soccercage_db_v2 = JSON.stringify(st);
 const b3 = boot(mem2);
 ok(b3.S.orders.length !== ordersAntes || b3.S.movements.every(m => m.ref !== 'ANTES'), 'un cambio de esquema sí reinicia la demo (documentado)');
 
+console.log('\n== Datos guardados antes del cambio de entrega ==');
+const memMig = {};
+boot(memMig);
+const oldSt = JSON.parse(memMig.soccercage_db_v2);
+oldSt.stores.forEach(s => { s.pickup = true; }); delete oldSt.migrations;
+memMig.soccercage_db_v2 = JSON.stringify(oldSt);
+const mg1 = boot(memMig);
+ok(!mg1.S.storeCfg('lasvegas').pickup && !mg1.S.storeCfg('athletum').pickup && mg1.S.storeCfg('camps').pickup, 'una demo guardada antes pasa a "academias solo USPS" sin reiniciarse');
+mg1.S.saveStore('lasvegas', { pickup: true });
+const mg2 = boot(memMig);
+ok(mg2.S.storeCfg('lasvegas').pickup, 'el ajuste se aplica una sola vez: si luego se reactiva a mano, se respeta');
+
 console.log('\n== Dos pestañas: la escritura con datos viejos se descarta ==');
 const mem3 = {};
 const tabA = boot(mem3), tabB = boot(mem3);

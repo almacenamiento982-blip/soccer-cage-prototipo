@@ -1220,6 +1220,8 @@ const I18N = {
     'adm.stores.kitRequiredShort': { es: 'Kit obligatorio', en: 'Required kit' },
     'adm.stores.yes': { es: 'Sí', en: 'Yes' },
     'adm.stores.no': { es: 'No', en: 'No' },
+    'err.fulfillNotAllowed': { es: 'Esta tienda solo entrega por envío USPS.', en: 'This store only delivers by USPS shipping.' },
+    'err.addressRequired': { es: 'Falta la dirección de envío.', en: 'The shipping address is missing.' },
     'err.storeName': { es: 'Escribe el nombre de la tienda.', en: 'Enter the store name.' },
     'err.storeTax': { es: 'El impuesto debe estar entre 0 % y 30 %.', en: 'Tax must be between 0% and 30%.' },
     'err.storeBrand': { es: 'El color de marca no es válido.', en: 'The brand color is not valid.' },

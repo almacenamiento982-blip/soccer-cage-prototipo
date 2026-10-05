@@ -1077,7 +1077,7 @@ const Shop = {
               <div class="form-grid tight">
                 <div class="field">
                   <label for="ckState">${I18N.t('checkout.state')}</label>
-                  <input class="input" id="ckState" value="${UI.esc(f.state || 'FL')}" maxlength="2" autocomplete="address-level1" style="text-transform:uppercase">
+                  <input class="input" id="ckState" value="${UI.esc(f.state || (this.store.id === 'lasvegas' ? 'NV' : 'FL'))}" maxlength="2" autocomplete="address-level1" style="text-transform:uppercase">
                 </div>
                 <div class="field">
                   <label for="ckZip">${I18N.t('checkout.zip')} <span class="req">*</span></label>

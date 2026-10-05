@@ -38,6 +38,7 @@ const Store = {
           if (Number(schema) === DB_SCHEMA) {
             this.state = st;
             this.state.rev = Number(localStorage.getItem(REV_KEY) || st.rev || 0);
+            this.migrate();
             // Un catálogo reimportado actualiza precios y fotos sin borrar lo demás.
             if (st.version !== this.versionTag()) { this.mergeCatalog(); this.state.version = this.versionTag(); this.save(); }
             return;
@@ -48,6 +49,19 @@ const Store = {
       console.warn('No se pudo leer localStorage, se reinicia la demo.', e);
     }
     this.reset();
+  },
+
+  /** Ajustes puntuales sobre datos ya guardados: cada uno se aplica una sola vez. */
+  migrate() {
+    const done = this.state.migrations = this.state.migrations || [];
+    let changed = false;
+    // Reunión 05-10: las academias envían todo por USPS; la entrega en mano queda solo para el campamento.
+    if (!done.includes('academias-solo-usps')) {
+      this.state.stores.forEach(s => { if (s.id === 'athletum' || s.id === 'lasvegas') { s.pickup = false; s.shipping = true; } });
+      done.push('academias-solo-usps');
+      changed = true;
+    }
+    if (changed) this.save();
   },
 
   /**
@@ -137,6 +151,7 @@ const Store = {
         shipFrom: { name: 'Soccer Cage', line: '', city: 'Miami', state: 'FL', zip: '' }
       },
       outbox: [],
+      migrations: ['academias-solo-usps'],   // la demo nueva ya nace con estos ajustes
       currentUser: 'u1'
     };
     this._silent = true;
@@ -653,6 +668,11 @@ const Store = {
     if (!cart.length) return { ok: false, error: I18N.t('err.cartEmpty') };
 
     const fulfillment = data.fulfillment === 'shipping' ? 'shipping' : 'pickup';
+    // Cada tienda decide cómo entrega: las academias, solo por USPS.
+    if (!st[fulfillment]) return { ok: false, error: I18N.t('err.fulfillNotAllowed') };
+    if (fulfillment === 'shipping' && !(data.address && data.address.line && data.address.zip)) {
+      return { ok: false, error: I18N.t('err.addressRequired') };
+    }
 
     // 1) Regla del kit, evaluada contra el correo con el que se compra.
     const gate = this.kitGate(data.email);
