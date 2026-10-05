@@ -9,7 +9,7 @@
 
 const DB_KEY = 'soccercage_db_v2';
 const REV_KEY = 'soccercage_rev';
-const DB_SCHEMA = 5;
+const DB_SCHEMA = 6;
 const ORDER_FLOW = ['pendiente', 'procesando', 'enviado', 'completado'];
 
 const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
@@ -129,7 +129,14 @@ const Store = {
       orders: [], customers: [], movements: [],
       carts: {}, currentStore: 'camps', session: null,
       counters: { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100 },
-      settings: { company: 'Soccer Cage', city: 'Miami, FL', currency: 'USD', lowStockGlobal: 4 },
+      settings: {
+        company: 'Soccer Cage', city: 'Miami, FL', currency: 'USD', lowStockGlobal: 4,
+        // A quién llega el correo de cada pedido (quien prepara las órdenes).
+        orderNotifyEmails: 'ordenes@soccercage.com',
+        // Remitente de las etiquetas de envío.
+        shipFrom: { name: 'Soccer Cage', line: '', city: 'Miami', state: 'FL', zip: '' }
+      },
+      outbox: [],
       currentUser: 'u1'
     };
     this._silent = true;
@@ -163,10 +170,52 @@ const Store = {
     this.save();
   },
 
+  validateStore(data, existing) {
+    if (!String(data.name || '').trim()) return I18N.t('err.storeName');
+    if (!(Number(data.taxRate) >= 0 && Number(data.taxRate) < 0.3)) return I18N.t('err.storeTax');
+    if (!(Number(data.shippingFlat) >= 0)) return I18N.t('err.priceInvalid');
+    if (!data.pickup && !data.shipping) return I18N.t('adm.stores.needDeliveryBody');
+    if (data.brand && !/^#[0-9a-f]{6}$/i.test(data.brand)) return I18N.t('err.storeBrand');
+    if (data.stripeAccount && !/^acct_[A-Za-z0-9]{6,}$/.test(data.stripeAccount)) return I18N.t('err.stripeAccount');
+    return null;
+  },
+
+  /** Identificador de tienda a partir del nombre: "Summer Camp Chicago" → "summer-camp-chicago". */
+  storeSlug(name) {
+    const base = String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'tienda';
+    let id = base, n = 2;
+    while (this.storeCfg(id)) id = base + '-' + n++;
+    return id;
+  },
+
   saveStore(id, patch) {
     const s = this.storeCfg(id);
-    if (!s) return { ok: false };
+    if (!s) return { ok: false, error: I18N.t('err.notAvailable') };
+    const err = this.validateStore(Object.assign({}, s, patch), s);
+    if (err) return { ok: false, error: err };
     Object.assign(s, patch);
+    this.save();
+    return { ok: true, store: s };
+  },
+
+  /** Crea una tienda nueva sobre el mismo inventario. Opcionalmente copia
+      el surtido (qué productos vende) de otra tienda. */
+  addStore(data, copyFrom) {
+    const err = this.validateStore(data);
+    if (err) return { ok: false, error: err };
+    const name = data.name.trim();
+    const s = {
+      id: this.storeSlug(name), name, short: String(data.short || name).trim().slice(0, 24),
+      phase: Math.max(...this.state.stores.map(x => x.phase || 0), 0) + 1,
+      active: !!data.active, kitRequired: !!data.kitRequired,
+      taxRate: round2(data.taxRate * 1000) / 1000, pickup: !!data.pickup, shipping: !!data.shipping,
+      shippingFlat: round2(data.shippingFlat), brand: data.brand || '#111111', logo: data.logo || null,
+      stripeAccount: data.stripeAccount || '', source: null
+    };
+    this.state.stores.push(s);
+    if (copyFrom && this.storeCfg(copyFrom)) {
+      this.state.products.forEach(p => { if (p.stores.includes(copyFrom) && !p.stores.includes(s.id)) p.stores.push(s.id); });
+    }
     this.save();
     return { ok: true, store: s };
   },
@@ -493,6 +542,19 @@ const Store = {
   },
 
   /** selections: [{ productId, variantId }] — una talla por cada pieza del kit. */
+  /** Datos del jugador de un kit: nombre, año de nacimiento y equipo.
+      Acepta un texto (solo el nombre) o un objeto. */
+  normPlayer(player) {
+    const p = typeof player === 'object' && player ? player : { name: player };
+    const year = parseInt(p.birthYear, 10);
+    const now = new Date().getFullYear();
+    return {
+      name: String(p.name || '').trim(),
+      birthYear: year >= now - 80 && year <= now ? year : null,
+      team: String(p.team || '').trim()
+    };
+  },
+
   addKit(productId, selections, qty, player) {
     const p = this.product(productId);
     if (!this.isKit(p) || !p.active || !p.stores.includes(this.state.currentStore)) {
@@ -518,7 +580,8 @@ const Store = {
       lineId: 'L' + this.nextId('line'), kind: 'kit',
       productId, qty, name: p.name, sku: p.sku,
       price: p.price, listPrice: this.kitListPrice(p),
-      player: (player || '').trim(), components: comps
+      ...(pl => ({ player: pl.name, birthYear: pl.birthYear, team: pl.team }))(this.normPlayer(player)),
+      components: comps
     });
 
     this.save();
@@ -645,10 +708,59 @@ const Store = {
     this.state.orders.unshift(order);
     customer.orders += 1;
     customer.spent = round2(customer.spent + order.total);
+    this.queueOrderEmail(order, customer);
 
     this.clearCart();
     this.save();
     return { ok: true, order, customer, trace };
+  },
+
+  /* ---------- Correo de pedido al equipo que prepara las órdenes ----------
+     En el prototipo el correo se guarda en una bandeja de salida y se puede
+     ver desde el panel; en producción lo envía el servicio de correo. */
+  queueOrderEmail(order, customer) {
+    if (!this.state.outbox) this.state.outbox = [];
+    const to = String(this.settings.orderNotifyEmails || '').split(/[,;\s]+/).filter(Boolean);
+    if (!to.length) return null;
+    const mail = {
+      id: 'e' + this.nextId('email'), orderId: order.id, to,
+      subject: I18N.t('mail.subject', { number: order.number, store: (this.storeCfg(order.storeId) || {}).name || '' }),
+      date: this.nowISO(), status: 'simulado', customerId: customer.id
+    };
+    this.state.outbox.unshift(mail);
+    return mail;
+  },
+
+  emailForOrder(orderId) {
+    return (this.state.outbox || []).find(m => m.orderId === orderId) || null;
+  },
+
+  /* ---------- Etiquetas de envío ----------
+     Simulación del flujo que hará la API de envíos: crear la etiqueta,
+     pagarla y dejar el número de seguimiento en el pedido. */
+  /** Pedidos pagados por USPS que aún no tienen etiqueta ni han salido. */
+  pendingShipments() {
+    return this.state.orders.filter(o => o.fulfillment === 'shipping' && !o.label &&
+      o.paymentStatus === 'pagado' && (o.status === 'pendiente' || o.status === 'procesando'));
+  },
+
+  createLabels(orderIds) {
+    const done = [], skipped = [];
+    orderIds.forEach(id => {
+      const o = this.state.orders.find(x => x.id === id);
+      if (!o || !this.pendingShipments().includes(o)) { skipped.push(id); return; }
+      const n = this.nextId('label');
+      o.label = {
+        tracking: '9400 1' + String(1e15 + n * 7919).slice(1, 4) + ' ' + String(1e15 + n * 104729).slice(-4) + ' ' + String(1e15 + n * 15485863).slice(-4) + ' ' + String(n).padStart(4, '0'),
+        service: 'USPS Ground Advantage', cost: round2(o.shipping || 0),
+        createdAt: this.nowISO(), createdBy: this.user().name, simulated: true
+      };
+      if (o.status === 'pendiente') o.status = 'procesando';
+      if (o.status === 'procesando') o.status = 'enviado';
+      done.push(o);
+    });
+    this.save();
+    return { ok: true, done, skipped };
   },
 
   /* ---------- Gestión de pedidos ---------- */
@@ -902,8 +1014,8 @@ const Store = {
   },
 
   /** Separa una línea CSV respetando comillas ("Doe, John") y el separador , ; o tabulador. */
-  parseCsvLine(line) {
-    const sep = line.includes('\t') ? '\t' : (line.includes(';') && !line.includes(',') ? ';' : ',');
+  parseCsvLine(line, forcedSep) {
+    const sep = forcedSep || (line.includes('\t') ? '\t' : (line.includes(';') && !line.includes(',') ? ';' : ','));
     const out = [];
     let cur = '', q = false;
     for (let i = 0; i < line.length; i++) {
@@ -948,5 +1060,66 @@ const Store = {
     });
     this.save();
     return { ok: true, added, skipped };
+  },
+
+  /* ---------- Importación de inventario (Excel / CSV) ----------
+     rows: filas de la hoja, con encabezado. Se buscan las columnas SKU y
+     Cantidad. Modo 'entrada' suma lo recibido; 'conteo' deja el stock en
+     el número contado. Primero se arma el plan (vista previa) y solo al
+     confirmar se aplican los movimientos: todo queda en el historial. */
+  planStockImport(rows, mode) {
+    const plan = { lines: [], errors: [], unchanged: 0, empty: 0 };
+    if (!rows || !rows.length) return plan;
+
+    const head = rows[0].map(h => String(h || '').trim().toLowerCase());
+    let skuCol = head.findIndex(h => /^(sku|c[oó]digo|code)\b/.test(h));
+    let qtyCol = head.findIndex(h => /^(cantidad|qty|quantity|conteo|count|unidades|units)\b/.test(h));
+    const hasHead = skuCol >= 0 || qtyCol >= 0;
+    if (skuCol < 0) skuCol = 0;
+    if (qtyCol < 0) qtyCol = rows[0].length - 1;
+
+    const bySku = new Map();
+    this.state.products.filter(p => !this.isKit(p)).forEach(p =>
+      p.variants.forEach(v => bySku.set(String(v.sku).toUpperCase(), { p, v })));
+
+    const seen = new Set();
+    rows.slice(hasHead ? 1 : 0).forEach((r, i) => {
+      const row = i + (hasHead ? 2 : 1);
+      const sku = String(r[skuCol] || '').trim().toUpperCase();
+      const raw = String(r[qtyCol] == null ? '' : r[qtyCol]).trim();
+      if (!sku && !raw) return;
+      if (raw === '') { plan.empty++; return; }   // fila de la plantilla sin tocar
+      const err = msg => plan.errors.push({ row, sku: sku || '—', msg });
+      if (!sku) return err(I18N.t('imp.errNoSku'));
+      const hit = bySku.get(sku);
+      if (!hit) return err(I18N.t('imp.errUnknown'));
+      const n = Number(raw.replace(',', '.'));
+      if (!Number.isInteger(n) || n < 0) return err(I18N.t('imp.errQty', { v: raw }));
+      if (seen.has(sku)) return err(I18N.t('imp.errDupe'));
+      seen.add(sku);
+
+      const before = hit.v.stock;
+      const after = mode === 'conteo' ? n : before + n;
+      if (after === before) { plan.unchanged++; return; }
+      plan.lines.push({ row, sku: hit.v.sku, variantId: hit.v.id, product: hit.p.name, size: hit.v.size, before, after, diff: after - before });
+    });
+    return plan;
+  },
+
+  /** Aplica la importación. Se vuelve a calcular el plan por si el stock cambió desde la vista previa. */
+  applyStockImport(rows, mode) {
+    const plan = this.planStockImport(rows, mode);
+    const d = new Date(this.nowISO());
+    const ref = 'IMP-' + this.dayKey(d).replace(/-/g, '') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+    let applied = 0;
+    const failed = [];
+    plan.lines.forEach(l => {
+      const r = this.applyMovement({
+        variantId: l.variantId, type: l.diff > 0 ? 'entrada' : 'salida', qty: Math.abs(l.diff),
+        reason: mode === 'conteo' ? 'count' : 'purchase', ref
+      });
+      if (r.ok) applied++; else failed.push({ row: l.row, sku: l.sku, msg: r.error });
+    });
+    return { ok: true, applied, failed, ref, plan };
   }
 };

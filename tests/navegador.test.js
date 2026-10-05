@@ -60,6 +60,7 @@ const scenarios = {
     await page.click('.store-tab[data-store="lasvegas"]');
     await page.waitForLoadState('networkidle');
     ok(await page.locator('.kit-card').count() === 2 && await page.locator('.p-card').count() === 13, 'Las Vegas: 2 kits y 13 piezas');
+    ok(await page.locator('.sf-nav .sf-nav-link').count() >= 3, 'Las Vegas muestra el menú Kit · Jugador · Goalkeeper');
     await page.shot('03-lasvegas', true);
 
     await page.click('.kit-card[data-kit="lv-kit-competitive"]');
@@ -109,6 +110,7 @@ const scenarios = {
     await page.waitForSelector('#addKit');
     ok(!(await page.locator('#addKit').isEnabled()), 'kit sin tallas: botón deshabilitado', await page.locator('#addKit').innerText());
     await page.fill('#kitPlayer', 'Ethan Kim');
+    await page.selectOption('#kitYear', '2014');
     await page.click('[data-quick="YXS"]');
     ok(!(await page.locator('#addKit').isEnabled()), 'talla YXS: short agotado, no deja añadir', await page.locator('.modal .err-msg.show').innerText());
     await page.shot('11-kit-talla-agotada');
@@ -188,7 +190,7 @@ const scenarios = {
     await page.fill('#invQ', '');
     await page.type('#invQ', 'camp jersey');
     ok(await page.locator('#invQ').inputValue() === 'camp jersey', 'la búsqueda conserva los espacios');
-    ok(await page.locator('#page-inventory tbody tr').count() === 7, 'filtra las 7 tallas de Camp Jersey', await page.locator('#page-inventory tbody tr').count());
+    ok(await page.locator('#page-inventory tbody tr').count() === 14, 'filtra las 7 tallas de Camp Jersey y las 7 de ID Camp Jersey', await page.locator('#page-inventory tbody tr').count());
 
     // Entregas: inscripción sin talla → se completa y se entrega
     await page.click('.side-link[data-page="deliveries"]');
@@ -277,6 +279,7 @@ const scenarios = {
     await page.click('[data-quick="YM"]');
     await page.shot('31-movil-kit');
     await page.fill('#kitPlayer', 'Test Kid');
+    await page.selectOption('#kitYear', '2016');
     await page.click('#addKit');
     await page.waitForSelector('#cartDrawer.open');
     await page.shot('32-movil-carrito');
@@ -307,8 +310,189 @@ const scenarios = {
 
     ok(page.issues.length === 0, 'sin errores ni advertencias en consola', page.issues);
     await page.context().close();
+  },
+
+  /* Pedidos de la reunión del 05-10: datos del jugador, correo, envíos, tiendas, Excel */
+  async reunion(browser) {
+    const page = await newPage(browser, { viewport: { width: 1366, height: 900 } });
+    await page.goto(BASE);
+    await page.waitForSelector('.kit-card');
+    ok(await page.locator('.sf-band').count() === 1 && await page.locator('.sf-nav').count() === 0, 'Summer Camp abre con la franja de marca, sin menú de una sola sección');
+    ok(await page.locator('.kit-card .sz-pick').count() > 0, 'las tallas del kit se ven sin abrirlo');
+
+    // 1) Kit: nombre y año de nacimiento son obligatorios
+    await page.locator('.kit-card .sz-pick:not([disabled])').first().click();
+    await page.waitForSelector('#addKit');
+    ok(await page.locator('#addKit').isEnabled(), 'la talla elegida en la tarjeta llega al kit');
+    await page.click('#addKit');
+    ok(await page.locator('#errKitPlayer.show').count() === 1, 'sin nombre no se añade el kit');
+    await page.fill('#kitPlayer', 'Leo Test');
+    await page.click('#addKit');
+    ok(await page.locator('#errKitYear.show').count() === 1, 'sin año de nacimiento no se añade el kit');
+    await page.selectOption('#kitYear', '2015');
+    ok(await page.locator('#errKitYear.show').count() === 0, 'al elegir el año desaparece el aviso');
+    await page.fill('#kitTeam', 'U11 Blue');
+    await page.shot('40-kit-datos-jugador');
+    await page.click('#addKit');
+    await page.waitForSelector('#cartDrawer.open');
+    ok(/Leo Test/.test(await page.locator('#cartDrawer').innerText()) && /2015/.test(await page.locator('#cartDrawer').innerText()), 'el carrito muestra jugador y año');
+
+    // 2) Compra con envío → correo del pedido en la bandeja simulada
+    await page.click('#goCheckout');
+    await page.waitForSelector('#payNow');
+    await page.fill('#ckEmail', 'envio.test@example.com');
+    await page.fill('#ckName', 'Parent Test');
+    await page.check('input[name="ckFulfill"][value="shipping"]');
+    await page.fill('#ckAddr', '100 Test St');
+    await page.fill('#ckCity', 'Miami');
+    await page.fill('#ckZip', '33131');
+    await page.click('#payNow');
+    await page.waitForSelector('.success-mark', { timeout: 15000 });
+    const mail = await page.evaluate(() => { const o = Store.orders[0]; return { m: Store.emailForOrder(o.id), item: o.items[0] }; });
+    ok(mail.m && mail.m.to.includes('ordenes@soccercage.com'), 'el pedido deja un correo para quien prepara las órdenes', mail.m && mail.m.to);
+    ok(mail.item.player === 'Leo Test' && mail.item.birthYear === 2015 && mail.item.team === 'U11 Blue', 'el pedido guarda jugador, año y equipo', mail.item);
+
+    await page.click('#seeOrder');
+    await page.waitForSelector('#page-orders.active table');
+    await page.locator('#page-orders [data-order]').first().click();
+    await page.waitForSelector('#odMail');
+    await page.click('#odMail');
+    await page.waitForSelector('.mail');
+    const mailText = await page.locator('.mail').innerText();
+    ok(/Leo Test/.test(mailText) && /2015/.test(mailText) && /U11 Blue/.test(mailText) && /100 Test St/.test(mailText), 'la vista previa del correo trae jugador, año, equipo y dirección');
+    await page.shot('41-correo-pedido');
+    await page.click('#mailBack');
+    await page.waitForSelector('#odMail');
+    await page.evaluate(() => UI.closeModal());
+
+    // 3) Envíos: etiquetas en lote y resumen del día
+    await page.click('.side-link[data-page="shipments"]');
+    await page.waitForSelector('#page-shipments.active');
+    const pend = await page.evaluate(() => Store.pendingShipments().length);
+    ok(pend >= 2, 'hay pedidos por enviar (demo + compra nueva)', pend);
+    ok(await page.locator('#shipBadge').innerText() === String(pend), 'el menú lateral cuenta los envíos pendientes');
+    await page.shot('42-envios', true);
+    await page.click('#shipAll');
+    ok(/\d/.test(await page.locator('#shipGo').innerText()) && await page.locator('#shipGo').isEnabled(), 'marcar todos habilita crear etiquetas', await page.locator('#shipGo').innerText());
+    const [popup] = await Promise.all([page.context().waitForEvent('page'), page.click('#shipGo')]);
+    await popup.waitForLoadState();
+    const labels = await popup.locator('.lbl').count();
+    ok(labels === pend, 'se abre la hoja con una etiqueta 4×6 por pedido', labels);
+    ok(/9400/.test(await popup.locator('.trk').first().innerText()), 'cada etiqueta lleva número de seguimiento');
+    await popup.close();
+    ok(await page.evaluate(() => Store.pendingShipments().length) === 0, 'ya no quedan pedidos por enviar');
+    const summary = await page.locator('#page-shipments .kpi').nth(1).innerText();
+    ok(new RegExp(pend + ' envíos').test(summary), 'resumen del día: N envíos · N pagos · N personas', summary.replace(/\n/g, ' | '));
+    await page.shot('43-envios-hechos', true);
+
+    // 4) Nueva tienda desde el panel
+    await page.click('.side-link[data-page="stores"]');
+    await page.click('#storeNew');
+    await page.waitForSelector('#sfSave');
+    await page.click('#sfSave');
+    ok(await page.locator('#sfErrName.show').count() === 1, 'nueva tienda sin nombre: avisa');
+    await page.fill('#sfName', 'Juventus Summer Camp Chicago');
+    await page.fill('#sfStripe', 'sk_live_123');
+    await page.click('#sfSave');
+    ok(/acct_/.test(await page.locator('#sfErr').innerText()), 'rechaza pegar una clave secreta en vez del ID de Stripe');
+    await page.fill('#sfStripe', '');
+    await page.locator('#sfSwatches .swatch').nth(3).click();
+    await page.selectOption('#sfCopy', 'camps');
+    await page.shot('44-nueva-tienda');
+    await page.click('#sfSave');
+    await page.waitForSelector('#sfSave', { state: 'detached' });
+    const nueva = await page.evaluate(() => { const s = Store.stores[Store.stores.length - 1]; return { name: s.name, brand: s.brand, n: Store.productsInStore(s.id).length, camps: Store.productsInStore('camps').length }; });
+    ok(nueva.name === 'Juventus Summer Camp Chicago' && nueva.n === nueva.camps, 'la tienda nueva copia los productos de Summer Camps', nueva);
+    ok(await page.locator('.store-card').count() === 4, 'aparece su tarjeta en el panel');
+    await page.shot('45-tiendas', true);
+
+    // 5) Importar inventario desde Excel (.xlsx real) y CSV con punto y coma
+    const sku = await page.evaluate(() => Store.variantOf('camp-socks', 'M').sku);
+    const sku2 = await page.evaluate(() => Store.variantOf('camp-jersey', 'YM').sku);
+    const before = await page.evaluate(() => [Store.variantOf('camp-socks', 'M').stock, Store.variantOf('camp-jersey', 'YM').stock]);
+    await page.click('.side-link[data-page="inventory"]');
+    await page.click('#invImport');
+    await page.waitForSelector('#siFile');
+    await page.setInputFiles('#siFile', { name: 'llegada.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: makeXlsx([['SKU', 'Producto', 'Talla', 'Stock actual', 'Cantidad'], [sku, 'Camp Socks', 'M', before[0], 10], [sku2, 'Camp Jersey', 'YM', before[1], ''], ['NO-EXISTE', 'x', 'x', 0, 3], [sku, 'dup', 'M', 0, 1]]) });
+    await page.waitForSelector('.imp-summary');
+    const sumTxt = await page.locator('.imp-summary').innerText();
+    ok(/Cambios: 1/.test(sumTxt) && /Con error: 2/.test(sumTxt), 'vista previa del .xlsx: 1 cambio, SKU desconocido y repetido marcados', sumTxt.replace(/\n/g, ' | '));
+    await page.shot('46-importar-excel');
+    await page.click('#siApply');
+    await page.waitForSelector('#siApply', { state: 'detached' });
+    const afterIn = await page.evaluate(() => [Store.variantOf('camp-socks', 'M').stock, Store.movements[0].ref, Store.movements[0].reason]);
+    ok(afterIn[0] === before[0] + 10 && /^IMP-/.test(afterIn[1]) && afterIn[2] === 'purchase', 'entrada aplicada con movimiento IMP-… en el historial', afterIn);
+
+    await page.click('#invImport');
+    await page.waitForSelector('#siFile');
+    await page.check('input[name="siMode"][value="conteo"]');
+    await page.setInputFiles('#siFile', { name: 'conteo.csv', mimeType: 'text/csv', buffer: Buffer.from('﻿SKU;Producto;Cantidad\n' + sku2 + ';"Camp Jersey, YM";5\n') });
+    await page.waitForSelector('.imp-summary');
+    await page.click('#siApply');
+    await page.waitForSelector('#siApply', { state: 'detached' });
+    const afterCount = await page.evaluate(() => [Store.variantOf('camp-jersey', 'YM').stock, Store.movements[0].reason]);
+    ok(afterCount[0] === 5 && afterCount[1] === 'count', 'conteo físico desde CSV con ";" deja el stock en lo contado', afterCount);
+    const ledger = await page.evaluate(() => {
+      const sumStock = Store.products.filter(p => !Store.isKit(p)).reduce((s, p) => s + p.variants.reduce((a, v) => a + v.stock, 0), 0);
+      const sumMov = Store.movements.reduce((s, m) => s + (m.type === 'entrada' ? m.qty : -m.qty), 0);
+      return { sumStock, sumMov };
+    });
+    ok(ledger.sumStock === ledger.sumMov, 'el libro de movimientos sigue cuadrando con el inventario', ledger);
+
+    // 6) Configuración: destinatarios del correo
+    await page.click('.side-link[data-page="settings"]');
+    await page.fill('#stNotify', 'rudy@soccercage.com, malo@');
+    await page.click('#stOpsSave');
+    ok(await page.locator('#errNotify.show').count() === 1, 'rechaza un correo mal escrito');
+    await page.fill('#stNotify', 'rudy@soccercage.com, ordenes@soccercage.com');
+    await page.click('#stOpsSave');
+    ok(await page.evaluate(() => Store.settings.orderNotifyEmails) === 'rudy@soccercage.com, ordenes@soccercage.com', 'guarda los destinatarios');
+
+    ok(page.issues.length === 0, 'sin errores ni advertencias en consola', page.issues);
+    await page.context().close();
   }
 };
+
+/* .xlsx mínimo (zip + XML) para probar el lector sin librerías. */
+function makeXlsx(rows) {
+  const zlib = require('zlib');
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const strings = [];
+  const si = s => { let i = strings.indexOf(s); if (i < 0) { strings.push(s); i = strings.length - 1; } return i; };
+  const col = i => String.fromCharCode(65 + i);
+  const sheet = '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' +
+    rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => v === '' ? '' : typeof v === 'number'
+      ? `<c r="${col(ci)}${ri + 1}"><v>${v}</v></c>`
+      : `<c r="${col(ci)}${ri + 1}" t="s"><v>${si(v)}</v></c>`).join('') + '</row>').join('') + '</sheetData></worksheet>';
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+    'xl/workbook.xml': '<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Inventario" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels': '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml': sheet,
+    'xl/sharedStrings.xml': '<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' + strings.map(s => `<si><t>${esc(s)}</t></si>`).join('') + '</sst>'
+  };
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc32 = b => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const raw = Buffer.from(text, 'utf8'), comp = zlib.deflateRawSync(raw), nameB = Buffer.from(name);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(8, 8);
+    lh.writeUInt32LE(crc32(raw), 14); lh.writeUInt32LE(comp.length, 18); lh.writeUInt32LE(raw.length, 22); lh.writeUInt16LE(nameB.length, 26);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(8, 10);
+    ch.writeUInt32LE(crc32(raw), 16); ch.writeUInt32LE(comp.length, 20); ch.writeUInt32LE(raw.length, 24); ch.writeUInt16LE(nameB.length, 28); ch.writeUInt32LE(offset, 42);
+    locals.push(lh, nameB, comp); centrals.push(ch, nameB);
+    offset += 30 + nameB.length + comp.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, cd, end]);
+}
 
 (async () => {
   const which = process.argv.slice(2);

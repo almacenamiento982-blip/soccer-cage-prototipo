@@ -18,32 +18,36 @@
 const SEED = {};
 
 /* ---------- Tiendas (canales de venta sobre el mismo inventario) ---------- */
+/* Cada tienda tiene identidad propia (color, logo) y puede cobrar con su
+   propia cuenta de Stripe, como los campamentos en la plataforma actual. */
 SEED.stores = [
   {
-    id: 'camps', name: 'Juventus Camps', short: 'Camps', phase: 1, active: true,
+    id: 'camps', name: 'Juventus Summer Camps', short: 'Summer Camps', phase: 1, active: true,
     kitRequired: true, taxRate: 0.07,
     pickup: true, shipping: true, shippingFlat: 9.00,
-    accent: '#16181d', source: null
+    brand: '#111111', logo: null, stripeAccount: '', source: null
   },
   {
     id: 'athletum', name: 'Athletum FC', short: 'Athletum', phase: 2, active: false,
     kitRequired: true, taxRate: 0.07,
     pickup: true, shipping: true, shippingFlat: 9.00,
-    accent: '#16181d', source: 'https://shop.athletumfc.com'
+    brand: '#0b0b0b', logo: null, stripeAccount: '', source: 'https://shop.athletumfc.com'
   },
   {
     id: 'lasvegas', name: 'Juventus Academy Las Vegas', short: 'Las Vegas', phase: 3, active: false,
     kitRequired: true, taxRate: 0.07,
     pickup: true, shipping: true, shippingFlat: 9.00,
-    accent: '#16181d', source: 'https://jacademylasvegas.com/shop/'
+    brand: '#e8174b', logo: null, stripeAccount: '', source: 'https://jacademylasvegas.com/shop/'
   }
 ];
+
+SEED.brandPalette = ['#111111', '#e8174b', '#c8102e', '#1e40af', '#0f7b52', '#c9a227', '#6d28d9', '#ea580c'];
 
 /* ---------- Catálogos ---------- */
 // Las etiquetas visibles salen de I18N ('cat.player', 'kind.jersey'…).
 SEED.categories = ['player', 'goalkeeper', 'accessories'];
 SEED.kinds = ['kit', 'jersey', 'short', 'socks', 'apparel', 'accessory'];
-SEED.lines = { camp: 'Camp 2026', elite: 'Elite 2026-27', competitive: 'Competitive' };
+SEED.lines = { camp: 'Summer Camp 2026', elite: 'Elite 2026-27', competitive: 'Competitive' };
 
 SEED.sizeScale = ['YXS', 'YS', 'YM', 'YL', 'S', 'M', 'L', 'XL', 'U'];
 SEED.sizeNames = {
@@ -79,10 +83,10 @@ SEED.reasons = {
    (precio del año pasado), los precios de las piezas son provisionales. */
 SEED.campProducts = [
   {
-    id: 'camp-kit', sku: 'CAMP-KIT', name: 'Camp Kit', kind: 'kit',
+    id: 'camp-kit', sku: 'CAMP-KIT', name: 'Summer Camp Kit', kind: 'kit',
     categories: ['player'], line: 'camp', stores: ['camps'],
     price: 50, colorHex: '#16181d', image: null, images: [], featured: true,
-    description: 'Everything your player needs for camp: jersey, short and socks. Required on the first purchase.',
+    description: 'Everything your player needs for summer camp: jersey, short and socks. Required on the first purchase.',
     components: [
       { productId: 'camp-jersey', qty: 1 },
       { productId: 'camp-short',  qty: 1 },
@@ -112,11 +116,11 @@ SEED.campProducts = [
   },
   {
     // No se vende: la inscripción a la clínica incluye la camiseta.
-    id: 'clinic-jersey', sku: 'CLINIC-JER', name: 'Clinic Jersey', kind: 'jersey',
+    id: 'clinic-jersey', sku: 'CLINIC-JER', name: 'ID Camp Jersey', kind: 'jersey',
     categories: ['player'], line: 'camp', stores: [],
     price: 0, sizes: ['YXS', 'YS', 'YM', 'YL', 'S', 'M', 'L'],
     colorHex: '#c9a227', image: null, images: [], internal: true,
-    description: 'Included with the clinic registration. Not for sale: handed out from the roster.'
+    description: 'Included with the ID Camp registration. Not for sale: handed out from the roster.'
   }
 ];
 
@@ -195,22 +199,22 @@ SEED.roster = [
   { id: 'r9',  program: 'academy', player: 'Isabella Peña',   email: 'carlos.pena@example.com',    team: 'U10 Blue',  role: 'player',     size: 'YS', sockSize: 'S' },
   { id: 'r10', program: 'academy', player: 'Oliver Reyes',    email: 'marta.reyes@example.com',    team: 'U12 Red',   role: 'player',     size: 'YL', sockSize: 'M' },
 
-  // Clínica — 12 inscripciones sin talla + 3 posteriores con talla
-  { id: 'r11', program: 'clinic', player: 'Diego Vargas',     email: 'elena.vargas@example.com',   team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r12', program: 'clinic', player: 'Mia Johnson',      email: 'kate.johnson@example.com',   team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r13', program: 'clinic', player: 'Thiago Silva',     email: 'renata.silva@example.com',   team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r14', program: 'clinic', player: 'Ava Miller',       email: 'tom.miller@example.com',     team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r15', program: 'clinic', player: 'Samuel Ortiz',     email: 'lucia.ortiz@example.com',    team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r16', program: 'clinic', player: 'Chloe Davis',      email: 'mark.davis@example.com',     team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r17', program: 'clinic', player: 'Nicolás Castro',   email: 'andrea.castro@example.com',  team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r18', program: 'clinic', player: 'Zoe Wilson',       email: 'amy.wilson@example.com',     team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r19', program: 'clinic', player: 'Emilio Navarro',   email: 'jorge.navarro@example.com',  team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r20', program: 'clinic', player: 'Lily Anderson',    email: 'beth.anderson@example.com',  team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r21', program: 'clinic', player: 'Martín Rojas',     email: 'diana.rojas@example.com',    team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r22', program: 'clinic', player: 'Ella Thompson',    email: 'ryan.thompson@example.com',  team: 'Clinic · Session 1', role: 'player', size: '', sockSize: '' },
-  { id: 'r23', program: 'clinic', player: 'Gabriel Mendoza',  email: 'laura.gomez@example.com',    team: 'Clinic · Session 2', role: 'player', size: 'YM', sockSize: '' },
-  { id: 'r24', program: 'clinic', player: 'Sophia Clark',     email: 'nina.clark@example.com',     team: 'Clinic · Session 2', role: 'player', size: 'YL', sockSize: '' },
-  { id: 'r25', program: 'clinic', player: 'Adrián Fuentes',   email: 'rosa.fuentes@example.com',   team: 'Clinic · Session 2', role: 'player', size: 'YS', sockSize: '' }
+  // ID Camp (clínica): 12 inscripciones sin talla + 3 posteriores con talla
+  { id: 'r11', program: 'clinic', player: 'Diego Vargas',     email: 'elena.vargas@example.com',   team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r12', program: 'clinic', player: 'Mia Johnson',      email: 'kate.johnson@example.com',   team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r13', program: 'clinic', player: 'Thiago Silva',     email: 'renata.silva@example.com',   team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r14', program: 'clinic', player: 'Ava Miller',       email: 'tom.miller@example.com',     team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r15', program: 'clinic', player: 'Samuel Ortiz',     email: 'lucia.ortiz@example.com',    team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r16', program: 'clinic', player: 'Chloe Davis',      email: 'mark.davis@example.com',     team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r17', program: 'clinic', player: 'Nicolás Castro',   email: 'andrea.castro@example.com',  team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r18', program: 'clinic', player: 'Zoe Wilson',       email: 'amy.wilson@example.com',     team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r19', program: 'clinic', player: 'Emilio Navarro',   email: 'jorge.navarro@example.com',  team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r20', program: 'clinic', player: 'Lily Anderson',    email: 'beth.anderson@example.com',  team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r21', program: 'clinic', player: 'Martín Rojas',     email: 'diana.rojas@example.com',    team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r22', program: 'clinic', player: 'Ella Thompson',    email: 'ryan.thompson@example.com',  team: 'ID Camp · Session 1', role: 'player', size: '', sockSize: '' },
+  { id: 'r23', program: 'clinic', player: 'Gabriel Mendoza',  email: 'laura.gomez@example.com',    team: 'ID Camp · Session 2', role: 'player', size: 'YM', sockSize: '' },
+  { id: 'r24', program: 'clinic', player: 'Sophia Clark',     email: 'nina.clark@example.com',     team: 'ID Camp · Session 2', role: 'player', size: 'YL', sockSize: '' },
+  { id: 'r25', program: 'clinic', player: 'Adrián Fuentes',   email: 'rosa.fuentes@example.com',   team: 'ID Camp · Session 2', role: 'player', size: 'YS', sockSize: '' }
 ];
 
 /* ---------- Fechas relativas: la demo siempre se ve "de esta semana" ---------- */
@@ -269,28 +273,34 @@ SEED.history = function (S) {
   const sofia   = ['Sofía Herrera',  'sofia.herrera@example.com',  '(305) 555-0121'];
   const daniel  = ['Daniel Kim',     'daniel.kim@example.com',     '(786) 555-0155'];
 
+  const kid = (name, birthYear, team) => ({ name, birthYear, team });
+
   let o;
-  o = buy(laura, [{ kit: ['YM', 'S'], player: 'Mateo Gómez' }], pickup, 6, 9, 14);
+  o = buy(laura, [{ kit: ['YM', 'S'], player: kid('Mateo Gómez', 2016, 'U10 Blue') }], pickup, 6, 9, 14);
   at(6, 15, 0); S.setOrderStatus(o.id, 'procesando'); S.setOrderStatus(o.id, 'enviado');
   at(5, 8, 30); S.setOrderStatus(o.id, 'completado');
 
   o = buy(michael, [
-    { kit: ['YS', 'S'], player: 'Lucas Torres' },
-    { kit: ['YL', 'M'], player: 'Nico Torres' },
+    { kit: ['YS', 'S'], player: kid('Lucas Torres', 2017, 'U9 White') },
+    { kit: ['YL', 'M'], player: kid('Nico Torres', 2014, 'U12 Red') },
     { item: ['camp-socks', 'S'], qty: 2 }
   ], ship('8421 SW 124th Ave', 'Miami', '33183'), 5, 11, 2);
-  at(4, 10, 0); S.setOrderStatus(o.id, 'procesando'); S.setOrderStatus(o.id, 'enviado');
+  at(4, 10, 0); S.createLabels([o.id]);
 
-  o = buy(james, [{ kit: ['YL', 'M'], player: 'Noah Carter' }], pickup, 4, 16, 40);
+  o = buy(james, [{ kit: ['YL', 'M'], player: kid('Noah Carter', 2014, 'U12 Red') }], pickup, 4, 16, 40);
   at(3, 9, 0); S.setOrderStatus(o.id, 'cancelado');
 
-  o = buy(ana, [{ kit: ['YL', 'M'], player: 'Emma Ruiz' }], pickup, 2, 13, 25);
+  o = buy(ana, [{ kit: ['YL', 'M'], player: kid('Emma Ruiz', 2014, 'U12 Red') }], pickup, 2, 13, 25);
   at(2, 17, 0); S.setOrderStatus(o.id, 'procesando');
 
   // Segunda compra de Laura: ya tiene el kit, compra solo una camiseta extra.
   buy(laura, [{ item: ['camp-jersey', 'YM'] }], pickup, 1, 18, 5);
 
-  buy(sofia, [{ kit: ['S', 'M'], player: 'Valentina Herrera' }, { item: ['camp-short', 'S'] }],
+  // Pedidos con envío pendientes: aparecen en "Envíos" listos para la etiqueta.
+  buy(['Kevin Brown', 'kevin.brown@example.com', '(407) 555-0110'],
+      [{ kit: ['YS', 'S'], player: kid('Leo Brown', 2017, 'U9 Blue') }],
+      ship('77 Lake Ave', 'Orlando', '32801'), 1, 11, 30);
+  buy(sofia, [{ kit: ['S', 'M'], player: kid('Valentina Herrera', 2012, 'U14 Black') }, { item: ['camp-short', 'S'] }],
       ship('1200 Brickell Ave, Apt 804', 'Miami', '33131'), 0, 9, 40);
 
   // Entregas de academia y clínica (no son ventas)

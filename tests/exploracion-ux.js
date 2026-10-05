@@ -187,7 +187,8 @@ async function run(browser, label, opts) {
   });
   await page.locator('[data-toggle]').last().evaluate(e => e.click());
   await nav('stores');
-  await keepsScroll('panel/tiendas/guardar', () => page.locator('[data-save-store]').last().evaluate(e => e.click()));
+  await keepsScroll('panel/tiendas/pausar', () => page.locator('[data-toggle-store]').last().evaluate(e => e.click()));
+  await page.locator('[data-toggle-store]').last().evaluate(e => e.click());
   await keepsScroll('panel/tiendas/cambiar idioma', () => page.locator('#langBtn').evaluate(e => e.click()));
   await page.locator('#langBtn').evaluate(e => e.click());
   await nav('orders');
@@ -236,14 +237,14 @@ async function run(browser, label, opts) {
   await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
   // Textos cortados / desbordes en el panel en esta anchura
-  for (const p of ['dashboard', 'inventory', 'products', 'movements', 'deliveries', 'orders', 'customers', 'stores', 'alerts', 'reports', 'settings']) {
+  for (const p of ['dashboard', 'inventory', 'products', 'movements', 'deliveries', 'orders', 'shipments', 'customers', 'stores', 'alerts', 'reports', 'settings']) {
     await nav(p);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (over > 0) note('UX', 'panel/' + p, 'desborde horizontal', over);
     const empty = await page.evaluate(() => [...document.querySelectorAll('.page.active .kpi-value')].filter(e => !e.textContent.trim()).length);
     if (empty) note('UX', 'panel/' + p, 'indicadores vacíos', empty);
   }
-  okLine('panel', 'sin desbordes ni indicadores vacíos en las 11 secciones');
+  okLine('panel', 'sin desbordes ni indicadores vacíos en las 12 secciones');
 
   await ctx.close();
 }

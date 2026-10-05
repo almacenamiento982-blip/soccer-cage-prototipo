@@ -129,14 +129,62 @@ const UI = {
         <rect x="18" y="38" width="84" height="48" rx="12" fill="${c}" stroke="${dark}" stroke-width="1.5"/>
         <path d="M46 38 V30 a14 14 0 0128 0 v8" fill="none" stroke="${dark}" stroke-width="3.5"/>
         <rect x="18" y="55" width="84" height="9" fill="${dark}" opacity=".45"/>`,
+      // Kit completo: camiseta, short y medias.
       kit: `
-        <path d="M20 20 L32 13 L42 18 L52 13 L64 20 L68 38 L58 42 L58 76 Q39 80 24 76 L24 42 L14 38 Z"
+        <path d="M8 16 L21 9 L31 14 L41 9 L54 16 L58 34 L48 38 L48 72 Q31 76 14 72 L14 38 L4 34 Z"
               fill="#f2f3f5" stroke="${dark}" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M66 52 L110 52 L112 74 Q112 92 106 95 L96 95 L88 72 L80 95 L70 95 Q64 92 64 74 Z"
-              fill="${c}" stroke="${dark}" stroke-width="1.4" stroke-linejoin="round"/>`
+        <path d="M24 9 L31 17 L38 9 L31 13 Z" fill="${dark}" opacity=".35"/>
+        <path d="M60 46 L98 46 L100 66 Q100 82 95 85 L86 85 L79 64 L72 85 L63 85 Q58 82 58 66 Z"
+              fill="${c}" stroke="${dark}" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M60 46 L98 46 L99 52 L59 52 Z" fill="${dark}" opacity=".4"/>
+        <path d="M100 18 L112 18 L112 56 Q112 70 120 72 L120 82 L102 82 Q99 72 99 56 Z"
+              fill="${c}" stroke="${dark}" stroke-width="1.4" stroke-linejoin="round" transform="translate(-6 0)"/>
+        <rect x="93" y="18" width="13" height="7" fill="${dark}" opacity=".45"/>`
     };
 
     return `<svg class="jersey" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">${shapes[kind] || shapes.jersey}</svg>`;
+  },
+
+  /* ---------- Identidad de cada tienda ---------- */
+  /** Texto blanco o negro según lo claro que sea el color de la marca. */
+  inkFor(hex) {
+    const h = String(hex || '#111111').replace('#', '');
+    const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    return L > 0.4 ? '#111111' : '#ffffff';
+  },
+
+  brandVars(st) {
+    const b = /^#[0-9a-f]{6}$/i.test(st && st.brand || '') ? st.brand : '#111111';
+    return `--brand:${b};--brand-ink:${UI.inkFor(b)};--brand-soft:${b}14;`;
+  },
+
+  initials(name) {
+    return String(name || '').split(/\s+/).filter(w => /^[A-Za-zÁÉÍÓÚÑ0-9]/.test(w) && !/^(de|del|la|las|el|los|fc|y)$/i.test(w)).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '·';
+  },
+
+  /** Logo de la tienda, o sus iniciales sobre el color de la marca. */
+  storeMark(st, px) {
+    const size = px || 32;
+    if (st.logo) return `<span class="store-mark" style="width:${size}px;height:${size}px"><img src="${UI.esc(st.logo)}" alt=""></span>`;
+    const b = st.brand || '#111111';
+    return `<span class="store-mark" style="width:${size}px;height:${size}px;background:${UI.esc(b)};color:${UI.inkFor(b)};font-size:${Math.round(size * 0.38)}px">${UI.esc(UI.initials(st.name))}</span>`;
+  },
+
+  icon(name) {
+    const p = {
+      pin: '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>',
+      truck: '<rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+      card: '<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
+      user: '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>',
+      label: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5"/>',
+      upload: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
+      printer: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+      plus: '<path d="M12 5v14M5 12h14"/>'
+    }[name] || '';
+    return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   },
 
   /** Foto o dibujo del producto, listo para meter en un contenedor cuadrado. */

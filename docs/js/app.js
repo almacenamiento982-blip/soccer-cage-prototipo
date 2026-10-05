@@ -80,10 +80,12 @@ const App = {
 
     // El carrito solo tiene sentido en la tienda. Se atenúa en su sitio en
     // vez de ocultarlo: así la barra no salta al cambiar de pestaña.
-    const cart = document.getElementById('cartBtn');
-    cart.classList.toggle('is-inactive', mode !== 'shop');
-    cart.setAttribute('aria-hidden', mode !== 'shop');
-    cart.tabIndex = mode === 'shop' ? 0 : -1;
+    ['cartBtn', 'acctBtn'].forEach(id => {
+      const b = document.getElementById(id);
+      b.classList.toggle('is-inactive', mode !== 'shop');
+      b.setAttribute('aria-hidden', mode !== 'shop');
+      b.tabIndex = mode === 'shop' ? 0 : -1;
+    });
     document.getElementById('sidebarToggle').classList.toggle('is-hidden', mode !== 'admin');
     document.getElementById('sidebar').classList.remove('open');
 
@@ -111,6 +113,9 @@ const App = {
     document.getElementById('brandName').textContent = st ? st.name : Store.settings.company;
     document.getElementById('brandSub').textContent = I18N.t(st ? 'shop.official' : 'nav.brandSub');
     document.title = (st ? st.name : Store.settings.company) + ' — ' + I18N.t(st ? 'shop.official' : 'nav.brandSub');
+    const mark = document.getElementById('brandMark');
+    if (st) mark.outerHTML = UI.storeMark(st, 30).replace('class="store-mark"', 'class="store-mark brand-mark" id="brandMark"');
+    if (st) document.body.style.cssText = UI.brandVars(st);
   },
 
   /** Mide la barra de scroll para compensarla al bloquear el fondo. */

@@ -9,3 +9,6 @@ node_modules/
 Reunion_*
 tests/node_modules/
 tests/shots/
+
+# Grabaciones de reuniones: nunca en la carpeta publicada
+*.mp4

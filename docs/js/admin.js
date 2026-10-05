@@ -1,7 +1,7 @@
 /* ============================================================
    SOCCER CAGE — Panel administrativo
    Dashboard · Inventario · Productos · Movimientos · Entregas
-   Pedidos · Clientes · Tiendas · Alertas · Reportes · Configuración
+   Pedidos · Envíos · Clientes · Tiendas · Alertas · Reportes · Configuración
    ============================================================ */
 
 const Admin = {
@@ -12,7 +12,8 @@ const Admin = {
     mov:  { q: '', raw: '', type: 'todos', reason: 'todos' },
     ord:  { q: '', raw: '', status: 'todos', store: 'todos' },
     cust: { q: '', raw: '' },
-    del:  { q: '', raw: '', program: 'todos', status: 'todos' }
+    del:  { q: '', raw: '', program: 'todos', status: 'todos' },
+    ship: { sel: [] }
   },
   draft: null,
 
@@ -51,6 +52,7 @@ const Admin = {
     };
     set('alertBadge', m.alertCount);
     set('deliveryBadge', m.deliveriesPending);
+    set('shipBadge', Store.pendingShipments().length);
   },
 
   renderPage(page) {
@@ -307,7 +309,8 @@ const Admin = {
     return this.head(
       I18N.t('adm.inv.title'),
       I18N.t('adm.inv.sub'),
-      `<button class="btn btn-sm" id="invExport">${I18N.t('adm.inv.exportCsv')}</button>
+      `<button class="btn btn-sm" id="invImport">${UI.icon('upload')} ${I18N.t('imp.btn')}</button>
+       <button class="btn btn-sm" id="invExport">${I18N.t('adm.inv.exportCsv')}</button>
        <button class="btn btn-primary btn-sm" id="invMove">${I18N.t('adm.inv.newMovement')}</button>`
     ) + `
     <div class="kpi-grid">
@@ -382,9 +385,119 @@ const Admin = {
     this.bindSelect('invKind', this.f.inv, 'kind', 'inventory');
     document.getElementById('invMove').onclick = () => this.movementForm();
     document.getElementById('invExport').onclick = () => this.exportInventory();
+    document.getElementById('invImport').onclick = () => this.stockImportForm();
 
     document.querySelectorAll('[data-in]').forEach(b  => b.onclick = () => this.movementForm(b.dataset.in, 'entrada'));
     document.querySelectorAll('[data-out]').forEach(b => b.onclick = () => this.movementForm(b.dataset.out, 'salida'));
+  },
+
+  /* ---------- Importar inventario desde Excel ----------
+     Plantilla → se llena la columna Cantidad → se sube → vista previa → aplicar. */
+  stockImportForm() {
+    const st = { rows: null, file: '', mode: 'entrada' };
+    UI.modal(`
+      <div class="modal-head">
+        <div><h2>${I18N.t('imp.title')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('imp.sub')}</p></div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <ol class="imp-steps">
+          <li>
+            <div class="imp-step-title">${I18N.t('imp.step1')}</div>
+            <div class="hint" style="margin:2px 0 8px">${I18N.t('imp.step1Hint')}</div>
+            <button class="btn btn-sm" id="siTemplate">${I18N.t('imp.template')}</button>
+          </li>
+          <li>
+            <div class="imp-step-title">${I18N.t('imp.step2')}</div>
+            <div class="imp-mode" role="radiogroup" aria-label="${I18N.t('imp.step2')}">
+              <label class="imp-opt"><input type="radio" name="siMode" value="entrada" checked><span><b>${I18N.t('imp.modeIn')}</b><small>${I18N.t('imp.modeInHint')}</small></span></label>
+              <label class="imp-opt"><input type="radio" name="siMode" value="conteo"><span><b>${I18N.t('imp.modeCount')}</b><small>${I18N.t('imp.modeCountHint')}</small></span></label>
+            </div>
+          </li>
+          <li>
+            <div class="imp-step-title">${I18N.t('imp.step3')}</div>
+            <label class="imp-drop" for="siFile">
+              ${UI.icon('upload')}
+              <span id="siFileName">${I18N.t('imp.choose')}</span>
+              <input type="file" id="siFile" accept=".xlsx,.csv,text/csv" class="sr-only">
+            </label>
+          </li>
+        </ol>
+        <div id="siPreview"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="siApply" disabled>${I18N.t('imp.apply', { n: 0 })}</button>
+      </div>`, 'wide');
+
+    const preview = () => {
+      const box = document.getElementById('siPreview');
+      const btn = document.getElementById('siApply');
+      if (!st.rows) { box.innerHTML = ''; btn.disabled = true; return; }
+      const plan = Store.planStockImport(st.rows, st.mode);
+      btn.disabled = !plan.lines.length;
+      btn.textContent = I18N.t('imp.apply', { n: plan.lines.length });
+      const units = plan.lines.reduce((s, l) => s + l.diff, 0);
+      box.innerHTML = `
+        <div class="imp-summary">
+          <span class="badge badge-ok">${I18N.t('imp.sumChanges', { n: plan.lines.length })}</span>
+          <span class="badge badge-neutral">${I18N.t('imp.sumSame', { n: plan.unchanged + plan.empty })}</span>
+          ${plan.errors.length ? `<span class="badge badge-danger">${I18N.t('imp.sumErrors', { n: plan.errors.length })}</span>` : ''}
+          ${plan.lines.length ? `<span class="muted tiny">${I18N.t('imp.sumUnits', { n: (units > 0 ? '+' : '') + units })}</span>` : ''}
+        </div>
+        ${plan.lines.length ? `
+        <div class="table-wrap imp-table">
+          <table class="data">
+            <thead><tr><th>SKU</th><th>${I18N.t('adm.inv.colProductVariant')}</th><th class="right">${I18N.t('imp.colBefore')}</th><th class="right">${I18N.t('imp.colAfter')}</th><th class="right">${I18N.t('imp.colDiff')}</th></tr></thead>
+            <tbody>${plan.lines.map(l => `<tr>
+              <td class="mono tiny">${UI.esc(l.sku)}</td>
+              <td><div class="cell-main">${UI.esc(l.product)}</div><div class="cell-sub">${UI.esc(UI.sizeLabel(l.size))}</div></td>
+              <td class="right mono">${l.before}</td>
+              <td class="right mono"><b>${l.after}</b></td>
+              <td class="right"><span class="mov-delta ${l.diff > 0 ? 'in' : 'out'}">${l.diff > 0 ? '+' : '−'}${Math.abs(l.diff)}</span></td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>` : `<p class="muted" style="margin:10px 0">${I18N.t('imp.noChanges')}</p>`}
+        ${plan.errors.length ? `
+        <div class="imp-errors">
+          <div class="imp-step-title">${I18N.t('imp.errorsTitle')}</div>
+          <ul>${plan.errors.slice(0, 30).map(e => `<li>${I18N.t('imp.rowN', { n: e.row })} · <span class="mono">${UI.esc(e.sku)}</span> — ${UI.esc(e.msg)}</li>`).join('')}</ul>
+          ${plan.errors.length > 30 ? `<div class="hint">${I18N.t('imp.moreErrors', { n: plan.errors.length - 30 })}</div>` : ''}
+        </div>` : ''}`;
+    };
+
+    document.getElementById('siTemplate').onclick = () => {
+      const q = x => '"' + String(x).replace(/"/g, '""') + '"';
+      const lines = [['SKU', I18N.t('imp.hProduct'), I18N.t('imp.hSize'), I18N.t('imp.hCurrent'), I18N.t('imp.hQty')].join(',')];
+      Store.products.filter(p => p.active && !Store.isKit(p)).forEach(p => p.variants.forEach(v =>
+        lines.push([v.sku, q(p.name), q(UI.sizeLabel(v.size)), v.stock, ''].join(','))));
+      UI.download('plantilla_inventario_' + Store.dayKey(new Date()) + '.csv', lines.join('\n'));
+    };
+
+    document.querySelectorAll('input[name="siMode"]').forEach(r => r.onchange = () => { st.mode = r.value; preview(); });
+
+    document.getElementById('siFile').onchange = async ev => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      document.getElementById('siFileName').textContent = file.name;
+      try {
+        st.rows = await XlsxLite.readFile(file);
+        st.file = file.name;
+      } catch (e) {
+        st.rows = null;
+        UI.toast('danger', I18N.t('imp.readFail'), I18N.t('imp.readFailBody'));
+      }
+      preview();
+    };
+
+    document.getElementById('siApply').onclick = () => {
+      if (!st.rows) return;
+      const r = Store.applyStockImport(st.rows, st.mode);
+      UI.closeModal();
+      App.refreshAll();
+      if (r.failed.length) UI.toast('warn', I18N.t('imp.partialTitle'), I18N.t('imp.partialBody', { n: r.applied, f: r.failed.length, ref: r.ref }));
+      else UI.toast('ok', I18N.t('imp.doneTitle'), I18N.t('imp.doneBody', { n: r.applied, ref: r.ref }));
+    };
   },
 
   exportInventory() {
@@ -1475,7 +1588,7 @@ const Admin = {
               ${o.items.map(i => `
                 <tr>
                   <td><div class="cell-main">${UI.esc(i.name)}${i.kind === 'kit' ? ` <span class="badge badge-gold">${I18N.t('kind.kit')}</span>` : ''}</div>
-                      <div class="cell-sub">${i.kind === 'kit' ? (i.player ? I18N.t('adm.orders.detail.player', { name: UI.esc(i.player) }) : '') : I18N.t('shop.size') + ' ' + UI.esc(UI.sizeLabel(i.size))}</div></td>
+                      <div class="cell-sub">${i.kind === 'kit' ? (i.player ? I18N.t('adm.orders.detail.player', { name: Shop.playerLine(i) }) : '') : I18N.t('shop.size') + ' ' + UI.esc(UI.sizeLabel(i.size))}</div></td>
                   <td class="mono tiny">${UI.esc(i.sku)}</td>
                   <td class="right">${i.qty}</td>
                   <td class="right mono">${UI.money(i.price)}</td>
@@ -1502,6 +1615,21 @@ const Admin = {
                 <span class="trace-delta" style="color:${m.type === 'entrada' ? 'var(--ok-600)' : 'var(--danger-600)'}">(${m.type === 'entrada' ? '+' : '−'}${m.qty})</span></span>
             </div>`).join('')}
         </div>` : ''}
+
+        ${o.label ? `
+        <h3 style="margin:20px 0 10px">${I18N.t('adm.ship.labelTitle')}</h3>
+        <div class="kv"><span class="k">${I18N.t('adm.ship.tracking')}</span><span class="v mono">${UI.esc(o.label.tracking)}</span></div>
+        <div class="kv"><span class="k">${I18N.t('adm.ship.service')}</span><span class="v">${UI.esc(o.label.service)} · ${UI.money(o.label.cost)}${o.label.simulated ? ' · ' + I18N.t('adm.ship.simulated') : ''}</span></div>` : ''}
+
+        ${(mail => mail ? `
+        <div class="mail-row">
+          ${UI.icon('mail')}
+          <div style="flex:1;min-width:0">
+            <div class="cell-main">${I18N.t('adm.mail.sentTo', { to: UI.esc(mail.to.join(', ')) })}</div>
+            <div class="cell-sub">${UI.date(mail.date, true)} · ${I18N.t('adm.mail.simulatedNote')}</div>
+          </div>
+          <button class="btn btn-sm" id="odMail">${I18N.t('adm.mail.view')}</button>
+        </div>` : '')(Store.emailForOrder(o.id))}
       </div>
 
       <div class="modal-foot">
@@ -1510,6 +1638,9 @@ const Admin = {
         ${idx >= 0 && idx < flow.length - 1
           ? `<button class="btn btn-primary" id="odNext">${I18N.t('adm.orders.detail.markAs', { status: label(flow[idx + 1]) })}</button>` : ''}
       </div>`, 'wide');
+
+    const mailBtn = document.getElementById('odMail');
+    if (mailBtn) mailBtn.onclick = () => this.mailPreview(o.id, () => this.orderDetail(id));
 
     const next = document.getElementById('odNext');
     if (next) next.onclick = () => {
@@ -1529,6 +1660,225 @@ const Admin = {
         App.refreshAll();
         UI.toast('ok', I18N.t('adm.orders.detail.cancelledToast'), I18N.t('adm.orders.detail.cancelledToastBody'));
       }, true);
+  },
+
+  /* ---------- Correo de pedido (lo que recibe quien prepara las órdenes) ---------- */
+  mailBody(o) {
+    const c = this.customerOf(o) || {};
+    const st = Store.storeCfg(o.storeId) || {};
+    const a = o.address;
+    const kits = o.items.filter(i => i.kind === 'kit');
+    const row = (k, v) => `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:4px 0">${v}</td></tr>`;
+    return `
+      <div class="mail">
+        <div class="mail-brand" style="background:${UI.esc(st.brand || '#111')};color:${UI.inkFor(st.brand || '#111')}">${UI.esc(st.name || '')}</div>
+        <div class="mail-body">
+          <h2 style="margin:0 0 4px">${I18N.t('mail.heading', { number: o.number })}</h2>
+          <p style="margin:0 0 16px;color:#6b7280">${UI.date(o.date, true)} · ${UI.esc(o.paymentMethod)}</p>
+          ${kits.length ? `
+          <h3 style="margin:0 0 8px">${I18N.t('mail.players')}</h3>
+          <table style="border-collapse:collapse;width:100%;margin-bottom:16px">
+            ${kits.map(i => `<tr style="border-top:1px solid #e5e7eb">
+              <td style="padding:8px 12px 8px 0"><b>${UI.esc(i.player || '—')}</b><br><span style="color:#6b7280">${I18N.t('mail.born', { year: i.birthYear || '—' })}${i.team ? ' · ' + UI.esc(i.team) : ''}</span></td>
+              <td style="padding:8px 0;text-align:right">${UI.esc(i.name)}<br><span style="color:#6b7280">${i.components.map(k => UI.esc(k.name) + ' ' + UI.esc(UI.sizeLabel(k.size))).join(' · ')}</span></td>
+            </tr>`).join('')}
+          </table>` : ''}
+          <h3 style="margin:0 0 8px">${I18N.t('mail.items')}</h3>
+          <table style="border-collapse:collapse;width:100%;margin-bottom:16px">
+            ${o.items.map(i => `<tr style="border-top:1px solid #e5e7eb">
+              <td style="padding:6px 0">${i.qty} × ${UI.esc(i.name)}${i.kind === 'kit' ? '' : ' · ' + UI.esc(UI.sizeLabel(i.size))}</td>
+              <td style="padding:6px 0;text-align:right">${UI.money(i.price * i.qty)}</td></tr>`).join('')}
+            <tr style="border-top:1px solid #e5e7eb"><td style="padding:6px 0"><b>${I18N.t('cart.total')}</b> <span style="color:#6b7280">(${I18N.t('cart.tax', { tax: UI.pct(o.taxRate) })} ${UI.money(o.tax)}${o.shipping ? ' · ' + I18N.t('cart.shipping') + ' ' + UI.money(o.shipping) : ''})</span></td><td style="padding:6px 0;text-align:right"><b>${UI.money(o.total)}</b></td></tr>
+          </table>
+          <h3 style="margin:0 0 8px">${I18N.t('mail.buyer')}</h3>
+          <table style="border-collapse:collapse">
+            ${row(I18N.t('adm.orders.detail.name'), UI.esc(c.name || '—'))}
+            ${row(I18N.t('adm.orders.detail.email'), UI.esc(c.email || '—'))}
+            ${row(I18N.t('adm.orders.detail.phone'), UI.esc(c.phone || '—'))}
+            ${row(I18N.t('adm.orders.detail.delivery'), o.fulfillment === 'shipping' && a
+              ? UI.esc([a.line, a.city, a.state + ' ' + a.zip].join(', ')) + ' · USPS'
+              : I18N.t('fulfill.pickup.' + (I18N.has('fulfill.pickup.' + o.storeId) ? o.storeId : 'generic')))}
+          </table>
+        </div>
+      </div>`;
+  },
+
+  mailPreview(orderId, back) {
+    const o = Store.orders.find(x => x.id === orderId);
+    const mail = Store.emailForOrder(orderId);
+    if (!o || !mail) return;
+    UI.modal(`
+      <div class="modal-head">
+        <div>
+          <h2>${UI.esc(mail.subject)}</h2>
+          <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.mail.to')}: ${UI.esc(mail.to.join(', '))}</p>
+        </div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body mail-wrap">
+        <div class="demo-banner">${UI.infoIcon()} ${I18N.t('adm.mail.protoNote')}</div>
+        ${this.mailBody(o)}
+      </div>
+      <div class="modal-foot">
+        ${back ? `<button class="btn" id="mailBack">${I18N.t('adm.mail.back')}</button>` : ''}
+        <button class="btn btn-primary" onclick="UI.closeModal()">${I18N.t('ui.close')}</button>
+      </div>`, 'wide');
+    const b = document.getElementById('mailBack');
+    if (b) b.onclick = back;
+  },
+
+  /* ============================================================
+     ENVÍOS — etiquetas y resumen del día
+     Hoy cada envío son 5 pasos manuales en USPS. Aquí se seleccionan
+     los pedidos, se generan las etiquetas de una vez y queda el
+     resumen "N envíos · N pagos · N personas" para verificar.
+     ============================================================ */
+  shipmentsHTML() {
+    const f = this.f.ship;
+    const all = Store.orders.filter(o => o.status !== 'cancelado' && o.paymentStatus === 'pagado');
+    const toShip = Store.pendingShipments();
+    const toPickup = all.filter(o => o.fulfillment === 'pickup' && o.status !== 'completado');
+    const today = Store.dayKey(new Date());
+    const shippedToday = all.filter(o => o.label && Store.dayKey(o.label.createdAt) === today);
+    const recent = all.filter(o => o.label).sort((a, b) => b.label.createdAt.localeCompare(a.label.createdAt)).slice(0, 20);
+    const people = new Set(shippedToday.map(o => o.customerId)).size;
+    const cost = shippedToday.reduce((s, o) => s + (o.label.cost || 0), 0);
+    const kitsOf = o => o.items.filter(i => i.kind === 'kit').map(i => i.player).filter(Boolean);
+
+    const row = o => {
+      const c = this.customerOf(o) || {};
+      const a = o.address || {};
+      return `<tr>
+        <td><input type="checkbox" data-ship="${o.id}" ${f.sel.includes(o.id) ? 'checked' : ''} aria-label="${o.number}"></td>
+        <td><div class="cell-main mono">${o.number}</div><div class="cell-sub">${UI.esc(UI.storeName(o.storeId))} · ${UI.date(o.date)}</div></td>
+        <td><div class="cell-main">${UI.esc(c.name || '—')}</div><div class="cell-sub">${UI.esc(kitsOf(o).join(', '))}</div></td>
+        <td class="tiny">${UI.esc([a.line, a.city, (a.state || '') + ' ' + (a.zip || '')].join(', '))}</td>
+        <td class="right">${o.items.reduce((s, i) => s + i.qty, 0)}</td>
+        <td class="right mono">${UI.money(o.shipping)}</td>
+      </tr>`;
+    };
+
+    return this.head(I18N.t('adm.ship.title'), I18N.t('adm.ship.sub'),
+      `<button class="btn btn-sm" id="shipCsv">${I18N.t('adm.ship.csv')}</button>`) + `
+    <div class="alert alert-info">
+      ${UI.infoIcon()}
+      <div><div class="alert-title">${I18N.t('adm.ship.protoTitle')}</div><div class="alert-body">${I18N.t('adm.ship.protoBody')}</div></div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi kpi-principal ${toShip.length ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.ship.kpiToShip')}</div><div class="kpi-value">${toShip.length}</div><div class="kpi-foot">${I18N.t('adm.ship.kpiToShipFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.ship.kpiToday')}</div><div class="kpi-value">${shippedToday.length}</div><div class="kpi-foot">${I18N.t('adm.ship.summary', { n: shippedToday.length, p: shippedToday.length, people })}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.ship.kpiCost')}</div><div class="kpi-value">${UI.money(cost)}</div><div class="kpi-foot">${I18N.t('adm.ship.kpiCostFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.ship.kpiPickup')}</div><div class="kpi-value">${toPickup.length}</div><div class="kpi-foot">${I18N.t('adm.ship.kpiPickupFoot')}</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--s5)">
+      <div class="card-head">
+        <div><h2>${I18N.t('adm.ship.toShipTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.ship.toShipSub')}</p></div>
+        <div class="head-actions">
+          <button class="btn btn-sm" id="shipAll" ${toShip.length ? '' : 'disabled'}>${I18N.t('adm.ship.selectAll')}</button>
+          <button class="btn btn-primary btn-sm" id="shipGo" ${f.sel.length ? '' : 'disabled'}>${UI.icon('label')} ${f.sel.length ? I18N.t('adm.ship.create', { n: f.sel.length }) : I18N.t('adm.ship.createNone')}</button>
+        </div>
+      </div>
+      <div class="card-body flush">
+        ${toShip.length ? `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th style="width:36px"></th><th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.ship.colWho')}</th><th>${I18N.t('adm.ship.colAddress')}</th><th class="right">${I18N.t('adm.orders.colItems')}</th><th class="right">${I18N.t('adm.ship.colCharged')}</th></tr></thead>
+            <tbody>${toShip.map(row).join('')}</tbody>
+          </table>
+        </div>` : UI.empty(I18N.t('adm.ship.emptyTitle'), I18N.t('adm.ship.emptyBody'))}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div><h2>${I18N.t('adm.ship.doneTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.ship.doneSub')}</p></div>
+        <button class="btn btn-sm" id="shipPrint" ${recent.length ? '' : 'disabled'}>${UI.icon('printer')} ${I18N.t('adm.ship.printToday', { n: shippedToday.length })}</button>
+      </div>
+      <div class="card-body flush">
+        ${recent.length ? `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.ship.colWho')}</th><th>${I18N.t('adm.ship.tracking')}</th><th>${I18N.t('adm.ship.colWhen')}</th><th class="right">${I18N.t('adm.ship.colLabelCost')}</th><th class="right"></th></tr></thead>
+            <tbody>${recent.map(o => `<tr>
+              <td class="mono">${o.number}</td>
+              <td>${UI.esc((this.customerOf(o) || {}).name || '—')}</td>
+              <td class="mono tiny">${UI.esc(o.label.tracking)}</td>
+              <td class="tiny">${UI.date(o.label.createdAt, true)}<div class="cell-sub">${UI.esc(o.label.createdBy)}</div></td>
+              <td class="right mono">${UI.money(o.label.cost)}</td>
+              <td class="right"><button class="btn btn-sm btn-ghost" data-reprint="${o.id}">${I18N.t('adm.ship.reprint')}</button></td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>` : UI.empty(I18N.t('adm.ship.noneDoneTitle'), I18N.t('adm.ship.noneDoneBody'))}
+      </div>
+    </div>`;
+  },
+
+  shipmentsBind() {
+    const f = this.f.ship;
+    const pending = () => Store.pendingShipments().map(o => o.id);
+    f.sel = f.sel.filter(id => pending().includes(id));
+
+    document.querySelectorAll('[data-ship]').forEach(c => c.onchange = () => {
+      f.sel = c.checked ? f.sel.concat(c.dataset.ship) : f.sel.filter(x => x !== c.dataset.ship);
+      this.renderPage('shipments');
+    });
+    const all = document.getElementById('shipAll');
+    if (all) all.onclick = () => { const p = pending(); f.sel = f.sel.length === p.length ? [] : p; this.renderPage('shipments'); };
+
+    document.getElementById('shipGo').onclick = () => {
+      const r = Store.createLabels(f.sel);
+      f.sel = [];
+      App.refreshAll();
+      const people = new Set(r.done.map(o => o.customerId)).size;
+      UI.toast('ok', I18N.t('adm.ship.createdTitle'), I18N.t('adm.ship.summary', { n: r.done.length, p: r.done.length, people }));
+      if (r.done.length) this.printLabels(r.done);
+    };
+
+    const today = Store.dayKey(new Date());
+    const pr = document.getElementById('shipPrint');
+    if (pr) pr.onclick = () => this.printLabels(Store.orders.filter(o => o.label && Store.dayKey(o.label.createdAt) === today));
+    document.querySelectorAll('[data-reprint]').forEach(b => b.onclick = () => this.printLabels([Store.orders.find(o => o.id === b.dataset.reprint)]));
+
+    document.getElementById('shipCsv').onclick = () => {
+      const lines = [['order', 'store', 'customer', 'players', 'address', 'city', 'state', 'zip', 'tracking', 'label_cost', 'created_at'].join(',')];
+      Store.orders.filter(o => o.label).forEach(o => {
+        const c = this.customerOf(o) || {}, a = o.address || {};
+        const q = x => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+        lines.push([o.number, q(UI.storeName(o.storeId)), q(c.name), q(o.items.filter(i => i.kind === 'kit').map(i => i.player).join(' / ')), q(a.line), q(a.city), a.state, a.zip, q(o.label.tracking), o.label.cost, o.label.createdAt].join(','));
+      });
+      UI.download('envios_soccercage_' + today + '.csv', lines.join('\n'));
+    };
+  },
+
+  /** Hoja de etiquetas 4×6 pulgadas lista para imprimir. */
+  printLabels(orders) {
+    orders = orders.filter(Boolean);
+    if (!orders.length) return;
+    const from = Store.settings.shipFrom || {};
+    const w = window.open('', '_blank');
+    if (!w) { UI.toast('warn', I18N.t('adm.stores.popupTitle'), I18N.t('adm.stores.popupBody')); return; }
+    const label = o => {
+      const c = this.customerOf(o) || {}, a = o.address || {};
+      return `<section class="lbl">
+        <div class="hd"><b>USPS GROUND ADVANTAGE</b><span>${UI.esc(o.number)}</span></div>
+        <div class="from">${UI.esc(from.name || Store.settings.company)}<br>${UI.esc(from.line || '')}<br>${UI.esc([from.city, from.state, from.zip].filter(Boolean).join(' '))}</div>
+        <div class="to"><small>SHIP TO</small><br><b>${UI.esc(c.name || '')}</b><br>${UI.esc(a.line || '')}<br>${UI.esc(a.city || '')}, ${UI.esc(a.state || '')} ${UI.esc(a.zip || '')}</div>
+        <div class="trk"><div class="bars"></div>${UI.esc(o.label.tracking)}</div>
+        <div class="ft">${o.items.map(i => i.qty + '× ' + UI.esc(i.name) + (i.kind === 'kit' && i.player ? ' (' + UI.esc(i.player) + ')' : '')).join(' · ')}${o.label.simulated ? '<br><b>' + I18N.t('adm.ship.simulatedPrint') + '</b>' : ''}</div>
+      </section>`;
+    };
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${I18N.t('adm.ship.title')}</title>
+      <style>@page{size:4in 6in;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}
+      .lbl{width:4in;height:6in;box-sizing:border-box;padding:.25in;border:1px dashed #999;page-break-after:always;display:flex;flex-direction:column;gap:.15in}
+      .hd{display:flex;justify-content:space-between;border-bottom:3px solid #000;padding-bottom:6px;font-size:13px}
+      .from{font-size:11px;line-height:1.4}.to{font-size:16px;line-height:1.45;padding:.1in;border:2px solid #000}
+      .to small{font-size:10px}.trk{font-family:monospace;font-size:13px;text-align:center;margin-top:auto}
+      .bars{height:.7in;margin-bottom:6px;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 5px,#fff 5px 8px)}
+      .ft{font-size:9.5px;color:#333;border-top:1px solid #000;padding-top:4px}</style></head>
+      <body>${orders.map(label).join('')}<script>window.onload=function(){window.print()}<\/script></body></html>`);
+    w.document.close();
   },
 
   /* ============================================================
@@ -1644,7 +1994,8 @@ const Admin = {
     const m = Store.metrics();
     const shared = Store.products.filter(p => p.stores.length > 1 && p.active).length;
 
-    return this.head(I18N.t('adm.stores.title'), I18N.t('adm.stores.sub')) + `
+    return this.head(I18N.t('adm.stores.title'), I18N.t('adm.stores.sub'),
+      `<button class="btn btn-primary btn-sm" id="storeNew">${I18N.t('adm.stores.newBtn')}</button>`) + `
     <div class="alert alert-info">
       ${UI.infoIcon()}
       <div>
@@ -1659,12 +2010,16 @@ const Admin = {
         const kits = list.filter(p => Store.isKit(p)).length;
         const stat = m.byStore.find(b => b.store.id === s.id);
         const url = this.storeUrl(s.id);
+        const yes = I18N.t('adm.stores.yes'), no = I18N.t('adm.stores.no');
         return `
         <div class="card store-card" data-store-card="${s.id}">
           <div class="card-head">
-            <div>
-              <h2>${UI.esc(s.name)}</h2>
-              <p class="muted tiny" style="margin-top:2px">${I18N.t('shop.phase', { n: s.phase })}${s.source ? ' · ' + I18N.t('adm.stores.replaces', { url: UI.esc(s.source.replace(/^https?:\/\//, '').replace(/\/$/, '')) }) : ''}</p>
+            <div class="cell-flex">
+              ${UI.storeMark(s, 40)}
+              <div>
+                <h2>${UI.esc(s.name)}</h2>
+                <p class="muted tiny" style="margin-top:2px">${I18N.t('shop.phase', { n: s.phase })}${s.source ? ' · ' + I18N.t('adm.stores.replaces', { url: UI.esc(s.source.replace(/^https?:\/\//, '').replace(/\/$/, '')) }) : ''}</p>
+              </div>
             </div>
             <span class="badge ${s.active ? 'badge-ok' : 'badge-neutral'}"><span class="dot"></span>${I18N.t(s.active ? 'store.statusActive' : 'store.statusPrep')}</span>
           </div>
@@ -1676,24 +2031,17 @@ const Admin = {
               <div><div class="v">${UI.money0(stat.revenue)}</div><div class="l">${I18N.t('adm.stores.revenue')}</div></div>
             </div>
 
-            <div class="form-grid" style="margin-top:var(--s5)">
-              <div class="field">
-                <label>${I18N.t('adm.stores.tax')}</label>
-                <input class="input" type="number" step="0.001" min="0" max="20" data-k="tax" value="${Math.round(s.taxRate * 100000) / 1000}">
-              </div>
-              <div class="field">
-                <label>${I18N.t('adm.stores.shipFlat')}</label>
-                <input class="input" type="number" step="0.01" min="0" data-k="ship" value="${s.shippingFlat}">
-              </div>
-              <div class="field span-2 store-checks">
-                <label><input type="checkbox" data-k="kit" ${s.kitRequired ? 'checked' : ''}> ${I18N.t('adm.stores.kitRequired')}</label>
-                <label><input type="checkbox" data-k="pickup" ${s.pickup ? 'checked' : ''}> ${I18N.t('adm.stores.pickup')}</label>
-                <label><input type="checkbox" data-k="shipping" ${s.shipping ? 'checked' : ''}> ${I18N.t('adm.stores.shipping')}</label>
-              </div>
+            <div class="store-kv">
+              <div class="kv"><span class="k">${I18N.t('adm.stores.tax')}</span><span class="v">${UI.pct(s.taxRate)}</span></div>
+              <div class="kv"><span class="k">${I18N.t('adm.stores.delivery')}</span><span class="v">${[s.pickup ? I18N.t('fulfill.pickupShort') : '', s.shipping ? I18N.t('fulfill.shippingShort') + ' (' + UI.money(s.shippingFlat) + ')' : ''].filter(Boolean).join(' · ')}</span></div>
+              <div class="kv"><span class="k">${I18N.t('adm.stores.kitRequiredShort')}</span><span class="v">${s.kitRequired ? yes : no}</span></div>
+              <div class="kv"><span class="k">${I18N.t('adm.stores.stripe')}</span><span class="v">${s.stripeAccount
+                ? `<span class="mono tiny">${UI.esc(s.stripeAccount)}</span>`
+                : `<span class="badge badge-warn">${I18N.t('adm.stores.stripeMissing')}</span>`}</span></div>
             </div>
 
             <div class="store-actions">
-              <button class="btn btn-sm btn-primary" data-save-store="${s.id}">${I18N.t('adm.settings.saveBtn')}</button>
+              <button class="btn btn-sm btn-primary" data-edit-store="${s.id}">${I18N.t('adm.stores.editBtn')}</button>
               <button class="btn btn-sm" data-toggle-store="${s.id}">${I18N.t(s.active ? 'adm.stores.pause' : 'adm.stores.publish')}</button>
               <button class="btn btn-sm btn-ghost" data-open-store="${s.id}">${I18N.t('adm.stores.preview')}</button>
             </div>
@@ -1717,20 +2065,8 @@ const Admin = {
   },
 
   storesBind() {
-    document.querySelectorAll('[data-save-store]').forEach(b => b.onclick = () => {
-      const id = b.dataset.saveStore;
-      const card = document.querySelector(`[data-store-card="${id}"]`);
-      const get = k => card.querySelector(`[data-k="${k}"]`);
-      const pickup = get('pickup').checked, shipping = get('shipping').checked;
-      if (!pickup && !shipping) { UI.toast('warn', I18N.t('adm.stores.needDelivery'), I18N.t('adm.stores.needDeliveryBody')); return; }
-      Store.saveStore(id, {
-        taxRate: Math.max(0, parseFloat(get('tax').value) || 0) / 100,
-        shippingFlat: Math.max(0, parseFloat(get('ship').value) || 0),
-        kitRequired: get('kit').checked, pickup, shipping
-      });
-      App.refreshAll();
-      UI.toast('ok', I18N.t('adm.settings.saved'), UI.storeName(id));
-    });
+    document.getElementById('storeNew').onclick = () => this.storeForm();
+    document.querySelectorAll('[data-edit-store]').forEach(b => b.onclick = () => this.storeForm(b.dataset.editStore));
 
     document.querySelectorAll('[data-toggle-store]').forEach(b => b.onclick = () => {
       const s = Store.storeCfg(b.dataset.toggleStore);
@@ -1752,6 +2088,141 @@ const Admin = {
     });
 
     document.querySelectorAll('[data-print]').forEach(b => b.onclick = () => this.printQR(b.dataset.print));
+  },
+
+  /** Alta o edición de una tienda: identidad, cobro, impuesto y entrega. */
+  storeForm(id) {
+    const s = id ? Store.storeCfg(id) : null;
+    const d = this.storeDraft = {
+      logo: s ? s.logo : null,
+      brand: s ? s.brand || '#111111' : SEED.brandPalette[Store.stores.length % SEED.brandPalette.length]
+    };
+    const v = (k, def) => s ? s[k] : def;
+
+    UI.modal(`
+      <div class="modal-head">
+        <div>
+          <h2>${I18N.t(s ? 'adm.stores.editTitle' : 'adm.stores.newTitle')}</h2>
+          <p class="muted tiny" style="margin-top:2px">${I18N.t('adm.stores.formIntro')}</p>
+        </div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <div class="pf-top">
+          <div class="pf-image">
+            <div class="pf-preview store-logo-preview" id="sfLogoPreview"></div>
+            <label class="btn btn-sm pf-upload">${I18N.t('adm.stores.uploadLogo')}<input type="file" id="sfLogo" accept="image/*" hidden></label>
+            <button class="btn btn-sm btn-ghost" id="sfLogoClear" type="button">${I18N.t('adm.pf.removeImage')}</button>
+          </div>
+          <div class="pf-main">
+            <div class="field">
+              <label for="sfName">${I18N.t('adm.stores.name')} <span class="req">*</span></label>
+              <input class="input" id="sfName" data-autofocus value="${UI.esc(v('name', ''))}" placeholder="Juventus Summer Camp Chicago">
+              <div class="err-msg" id="sfErrName">${I18N.t('err.storeName')}</div>
+            </div>
+            <div class="field">
+              <label for="sfShort">${I18N.t('adm.stores.short')}</label>
+              <input class="input" id="sfShort" value="${UI.esc(v('short', ''))}" maxlength="24" placeholder="Chicago">
+            </div>
+            <div class="field">
+              <label>${I18N.t('adm.stores.brand')}</label>
+              <div class="swatches" id="sfSwatches">
+                ${SEED.brandPalette.map(c => `<button type="button" class="swatch ${d.brand.toLowerCase() === c ? 'sel' : ''}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}
+                <input type="color" id="sfColor" value="${UI.esc(d.brand)}" aria-label="${I18N.t('adm.stores.brandCustom')}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="sfTax">${I18N.t('adm.stores.tax')}</label>
+            <input class="input" id="sfTax" type="number" step="0.001" min="0" max="25" value="${s ? Math.round(s.taxRate * 100000) / 1000 : 7}">
+            <div class="hint">${I18N.t('adm.stores.taxHint')}</div>
+          </div>
+          <div class="field">
+            <label for="sfShip">${I18N.t('adm.stores.shipFlat')}</label>
+            <input class="input" id="sfShip" type="number" step="0.01" min="0" value="${v('shippingFlat', 9)}">
+          </div>
+          <div class="field span-2 store-checks">
+            <label><input type="checkbox" id="sfKit" ${v('kitRequired', true) ? 'checked' : ''}> ${I18N.t('adm.stores.kitRequired')}</label>
+            <label><input type="checkbox" id="sfPickup" ${v('pickup', true) ? 'checked' : ''}> ${I18N.t('adm.stores.pickup')}</label>
+            <label><input type="checkbox" id="sfShipping" ${v('shipping', true) ? 'checked' : ''}> ${I18N.t('adm.stores.shipping')}</label>
+            <label><input type="checkbox" id="sfActive" ${v('active', false) ? 'checked' : ''}> ${I18N.t('adm.stores.activeLabel')}</label>
+          </div>
+          <div class="field span-2">
+            <label for="sfStripe">${I18N.t('adm.stores.stripe')}</label>
+            <input class="input mono" id="sfStripe" value="${UI.esc(v('stripeAccount', ''))}" placeholder="acct_1Abc…">
+            <div class="hint">${I18N.t('adm.stores.stripeHint')}</div>
+          </div>
+          ${s ? '' : `
+          <div class="field span-2">
+            <label for="sfCopy">${I18N.t('adm.stores.copyFrom')}</label>
+            <select class="select" id="sfCopy">
+              <option value="">${I18N.t('adm.stores.copyNone')}</option>
+              ${Store.stores.map(x => `<option value="${x.id}">${UI.esc(x.name)}</option>`).join('')}
+            </select>
+            <div class="hint">${I18N.t('adm.stores.copyHint')}</div>
+          </div>`}
+        </div>
+        <div class="err-msg" id="sfErr"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="sfSave">${I18N.t(s ? 'adm.pf.saveEdit' : 'adm.stores.create')}</button>
+      </div>`, 'wide');
+
+    const preview = () => {
+      const name = document.getElementById('sfName').value || '?';
+      document.getElementById('sfLogoPreview').innerHTML = UI.storeMark({ name, brand: d.brand, logo: d.logo }, 96);
+      document.getElementById('sfLogoClear').style.display = d.logo ? '' : 'none';
+      document.querySelectorAll('#sfSwatches .swatch').forEach(b => b.classList.toggle('sel', b.dataset.color.toLowerCase() === d.brand.toLowerCase()));
+    };
+    preview();
+    document.getElementById('sfName').addEventListener('input', preview);
+    document.querySelectorAll('#sfSwatches .swatch').forEach(b => b.onclick = () => { d.brand = b.dataset.color; document.getElementById('sfColor').value = d.brand; preview(); });
+    document.getElementById('sfColor').oninput = e => { d.brand = e.target.value; preview(); };
+    document.getElementById('sfLogo').onchange = e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      this.readImage(f, data => {
+        if (!data) { UI.toast('danger', I18N.t('adm.pf.imageErr'), I18N.t('adm.pf.imageErrBody')); return; }
+        d.logo = data;
+        preview();
+      });
+    };
+    document.getElementById('sfLogoClear').onclick = () => { d.logo = null; preview(); };
+
+    document.getElementById('sfSave').onclick = () => {
+      const val = x => document.getElementById(x).value.trim();
+      const data = {
+        name: val('sfName'), short: val('sfShort') || val('sfName'),
+        taxRate: (parseFloat(val('sfTax')) || 0) / 100,
+        shippingFlat: parseFloat(val('sfShip')) || 0,
+        kitRequired: document.getElementById('sfKit').checked,
+        pickup: document.getElementById('sfPickup').checked,
+        shipping: document.getElementById('sfShipping').checked,
+        active: document.getElementById('sfActive').checked,
+        stripeAccount: val('sfStripe'), brand: d.brand, logo: d.logo
+      };
+      const err = document.getElementById('sfErr');
+      const nameInput = document.getElementById('sfName');
+      // Sin nombre: el aviso va junto al campo, no al pie del formulario.
+      nameInput.classList.toggle('error', !data.name);
+      document.getElementById('sfErrName').classList.toggle('show', !data.name);
+      if (!data.name) { err.classList.remove('show'); nameInput.focus(); return; }
+
+      const r = s ? Store.saveStore(s.id, data) : Store.addStore(data, val('sfCopy'));
+      if (!r.ok) {
+        err.textContent = r.error;
+        err.classList.add('show');
+        return;
+      }
+      if (!Store.save()) UI.toast('warn', I18N.t('adm.pf.storageTitle'), I18N.t('adm.pf.storageBody'));
+      UI.closeModal();
+      App.refreshAll();
+      UI.toast('ok', I18N.t(s ? 'adm.settings.saved' : 'adm.stores.createdTitle'), r.store.name);
+    };
   },
 
   printQR(id) {
@@ -2043,6 +2514,27 @@ const Admin = {
       </div>
 
       <div class="card">
+        <div class="card-head"><h2>${I18N.t('adm.settings.opsTitle')}</h2></div>
+        <div class="card-body">
+          <div class="field">
+            <label for="stNotify">${I18N.t('adm.settings.notifyEmails')}</label>
+            <input class="input" id="stNotify" type="text" inputmode="email" value="${UI.esc(s.orderNotifyEmails || '')}" placeholder="ordenes@soccercage.com">
+            <div class="hint">${I18N.t('adm.settings.notifyHint')}</div>
+            <div class="err-msg" id="errNotify"></div>
+          </div>
+          <div class="field"><label for="stFromName">${I18N.t('adm.settings.shipFromName')}</label><input class="input" id="stFromName" value="${UI.esc((s.shipFrom || {}).name || '')}"></div>
+          <div class="field"><label for="stFromLine">${I18N.t('adm.settings.shipFromLine')}</label><input class="input" id="stFromLine" value="${UI.esc((s.shipFrom || {}).line || '')}" autocomplete="street-address"></div>
+          <div class="form-grid tight" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="field"><label for="stFromCity">${I18N.t('checkout.city')}</label><input class="input" id="stFromCity" value="${UI.esc((s.shipFrom || {}).city || '')}"></div>
+            <div class="field"><label for="stFromState">${I18N.t('checkout.state')}</label><input class="input" id="stFromState" maxlength="2" value="${UI.esc((s.shipFrom || {}).state || '')}"></div>
+            <div class="field"><label for="stFromZip">${I18N.t('checkout.zip')}</label><input class="input" id="stFromZip" inputmode="numeric" maxlength="10" value="${UI.esc((s.shipFrom || {}).zip || '')}"></div>
+          </div>
+          <div class="hint" style="margin-bottom:14px">${I18N.t('adm.settings.shipFromHint')}</div>
+          <button class="btn btn-primary" id="stOpsSave">${I18N.t('adm.settings.saveBtn')}</button>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-head"><h2>${I18N.t('adm.settings.usersPerms')}</h2></div>
         <div class="card-body">
           ${Store.state.users.filter(u => u.id !== 'sys').map(u => `
@@ -2099,6 +2591,26 @@ const Admin = {
       s.lowStockGlobal = parseInt(document.getElementById('stLow').value) || 0;
       Store.save();
       App.refreshAll();
+      UI.toast('ok', I18N.t('adm.settings.saved'), I18N.t('adm.settings.savedBody'));
+    };
+
+    document.getElementById('stOpsSave').onclick = () => {
+      const s = Store.settings;
+      const raw = document.getElementById('stNotify').value.trim();
+      const list = raw.split(/[,;\s]+/).filter(Boolean);
+      const bad = list.filter(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+      const err = document.getElementById('errNotify');
+      if (bad.length) {
+        err.textContent = I18N.t('adm.settings.notifyBad', { list: bad.join(', ') });
+        err.classList.add('show');
+        document.getElementById('stNotify').focus();
+        return;
+      }
+      err.classList.remove('show');
+      s.orderNotifyEmails = list.join(', ');
+      const v = id => document.getElementById(id).value.trim();
+      s.shipFrom = { name: v('stFromName'), line: v('stFromLine'), city: v('stFromCity'), state: v('stFromState').toUpperCase(), zip: v('stFromZip') };
+      Store.save();
       UI.toast('ok', I18N.t('adm.settings.saved'), I18N.t('adm.settings.savedBody'));
     };
 

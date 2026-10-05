@@ -135,6 +135,8 @@ const sections = {
     await page.click('.kit-card');
     await page.waitForSelector('#addKit');
     await page.click('[data-quick="YM"]');
+    await page.fill('#kitPlayer', 'Doble Kid');
+    await page.selectOption('#kitYear', '2015');
     await page.click('#addKit');
     await page.waitForSelector('#cartDrawer.open');
     await page.click('#goCheckout');

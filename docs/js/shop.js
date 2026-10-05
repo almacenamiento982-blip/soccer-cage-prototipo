@@ -57,14 +57,20 @@ const Shop = {
 
     const kits = this.kits();
     const heroKey = I18N.has('store.' + st.id + '.title') ? 'store.' + st.id : 'store.generic';
+    const cats = this.navCats();
+    const pickupLabel = this.pickupLabel();
 
+    root.style.cssText = UI.brandVars(st);
     root.innerHTML = `
       ${App.storefront ? '' : `
       <div class="store-tabs" role="tablist" aria-label="${I18N.t('shop.storesAria')}">
         ${Store.stores.map(s => `
           <button class="store-tab ${s.id === st.id ? 'active' : ''}" data-store="${s.id}" role="tab" aria-selected="${s.id === st.id}">
-            <span class="store-tab-name">${UI.esc(s.name)}</span>
-            <span class="store-tab-meta">${I18N.t('shop.phase', { n: s.phase })} · ${I18N.t(s.active ? 'store.statusActive' : 'store.statusPrep')}</span>
+            ${UI.storeMark(s, 26)}
+            <span class="store-tab-text">
+              <span class="store-tab-name">${UI.esc(s.name)}</span>
+              <span class="store-tab-meta">${I18N.t('shop.phase', { n: s.phase })} · ${I18N.t(s.active ? 'store.statusActive' : 'store.statusPrep')}</span>
+            </span>
           </button>`).join('')}
       </div>`}
 
@@ -77,25 +83,25 @@ const Shop = {
         </div>
       </div>` : ''}
 
-      <section class="hero">
-        <div class="hero-eyebrow">
-          <svg style="width:13px;height:13px" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
-          ${UI.esc(st.name)} · ${I18N.t('shop.official')}
+      <section class="sf-band">
+        ${UI.storeMark(st, 64)}
+        <div class="sf-band-text">
+          <div class="sf-eyebrow">${UI.esc(st.name)} · ${I18N.t('shop.official')}</div>
+          <h1>${I18N.t(heroKey + '.title')}</h1>
+          <p>${I18N.t(heroKey + '.body')}</p>
         </div>
-        <h1>${I18N.t(heroKey + '.title')}</h1>
-        <p>${I18N.t(heroKey + '.body')}</p>
-        <div class="hero-actions">
-          ${kits.length ? `<button class="btn btn-gold btn-lg" id="heroKit">${I18N.t(st.kitRequired ? 'shop.heroKitBtn' : 'shop.heroKitsBtn')}</button>` : ''}
-          <button class="btn btn-lg btn-on-dark" id="heroSingles">${I18N.t('shop.heroSinglesBtn')}</button>
-        </div>
-        <div class="hero-stats">
-          <div class="hero-stat"><div class="v">${st.pickup ? I18N.t('shop.factPickupV') : 'USPS'}</div><div class="l">${I18N.t(st.pickup ? 'fulfill.pickup.' + (I18N.has('fulfill.pickup.' + st.id) ? st.id : 'generic') : 'shop.factShipL')}</div></div>
-          <div class="hero-stat"><div class="v">USPS</div><div class="l">${I18N.t('shop.factShipL')}</div></div>
-          <div class="hero-stat"><div class="v">${UI.pct(st.taxRate)}</div><div class="l">${I18N.t('shop.factTaxL')}</div></div>
-        </div>
+        <ul class="sf-perks">
+          ${st.pickup ? `<li>${UI.icon('pin')}<span>${UI.esc(pickupLabel)} · <b>${I18N.t('shop.factPickupV')}</b></span></li>` : ''}
+          ${st.shipping ? `<li>${UI.icon('truck')}<span>${I18N.t('shop.perkShip')}</span></li>` : ''}
+          <li>${UI.icon('card')}<span>${I18N.t('shop.perkPay')}</span></li>
+        </ul>
       </section>
 
-      <div id="shopAccount"></div>
+      ${cats.length < 2 ? '' : `<nav class="sf-nav" aria-label="${I18N.t('shop.navAria')}">
+        ${kits.length ? `<button class="sf-nav-link" data-go="shopKits">${I18N.t(st.kitRequired ? 'shop.navKitRequired' : 'shop.navKits')}</button>` : ''}
+        ${cats.map(c => `<button class="sf-nav-link ${this.filters.cat === c ? 'active' : ''}" data-navcat="${c}">${I18N.t('cat.' + c)}</button>`).join('')}
+        <button class="sf-nav-link ${this.filters.cat === 'todos' && cats.length ? '' : 'hidden'}" data-navcat="todos">${I18N.t('shop.navAll')}</button>
+      </nav>`}
 
       ${kits.length ? `
       <section id="shopKits" class="shop-section">
@@ -105,33 +111,31 @@ const Shop = {
             <p class="muted tiny" style="margin-top:3px">${I18N.t(st.kitRequired ? 'shop.kitRequiredSub' : 'shop.kitsSub')}</p>
           </div>
         </div>
-        <div class="kit-grid" id="shopKitGrid"></div>
-      </section>` : ''}
+        <div id="shopAccount"></div>
+        <div class="kit-grid ${kits.length === 1 ? 'single' : ''}" id="shopKitGrid"></div>
+      </section>` : '<div id="shopAccount"></div>'}
 
       <section id="shopSingles" class="shop-section">
-        <div class="section-head">
+        <div class="section-head sf-singles-head">
           <div>
             <h2>${I18N.t('shop.singlesTitle')}</h2>
             <p class="muted tiny" style="margin-top:3px">${I18N.t(st.kitRequired && kits.length ? 'shop.singlesSubGate' : 'shop.availSub')}</p>
           </div>
-          <span class="muted tiny" id="shopResultCount"></span>
-        </div>
-
-        <div class="shop-toolbar">
-          <div class="search-box">
-            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input class="input" id="shopSearch" type="search" placeholder="${I18N.t('shop.searchPh')}" aria-label="${I18N.t('shop.search')}" value="${UI.esc(this.filters.q)}">
+          <div class="shop-toolbar">
+            <div class="search-box">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input class="input" id="shopSearch" type="search" placeholder="${I18N.t('shop.searchPh')}" aria-label="${I18N.t('shop.search')}" value="${UI.esc(this.filters.q)}">
+            </div>
+            <select class="select" id="shopSort" aria-label="${I18N.t('shop.sort')}">
+              ${[['rel', 'shop.sortFeatured'], ['price-asc', 'shop.sortPriceAsc'], ['price-desc', 'shop.sortPriceDesc'], ['name', 'shop.sortName']]
+                .map(([v, k]) => `<option value="${v}"${this.filters.sort === v ? ' selected' : ''}>${I18N.t(k)}</option>`).join('')}
+            </select>
+            <label class="chip chip-check chip-sm">
+              <input type="checkbox" id="shopHideOut" ${this.filters.hideOut ? 'checked' : ''}> ${I18N.t('shop.hideOut')}
+            </label>
           </div>
-          <select class="select" id="shopSort" style="width:auto;min-width:175px" aria-label="${I18N.t('shop.sort')}">
-            ${[['rel', 'shop.sortFeatured'], ['price-asc', 'shop.sortPriceAsc'], ['price-desc', 'shop.sortPriceDesc'], ['name', 'shop.sortName'], ['stock', 'shop.sortStock']]
-              .map(([v, k]) => `<option value="${v}"${this.filters.sort === v ? ' selected' : ''}>${I18N.t(k)}</option>`).join('')}
-          </select>
-          <label class="chip chip-check">
-            <input type="checkbox" id="shopHideOut" ${this.filters.hideOut ? 'checked' : ''}> ${I18N.t('shop.hideOut')}
-          </label>
         </div>
-
-        <div class="chips" id="shopCats" style="margin-bottom:var(--s5)"></div>
+        <div class="sf-count muted tiny" id="shopResultCount"></div>
         <div class="product-grid" id="shopGrid"></div>
       </section>
 
@@ -140,9 +144,14 @@ const Shop = {
     root.querySelectorAll('[data-store]').forEach(b => b.onclick = () => this.setStore(b.dataset.store));
 
     const go = id => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-    const hk = document.getElementById('heroKit');
-    if (hk) hk.onclick = () => go('shopKits');
-    document.getElementById('heroSingles').onclick = () => go('shopSingles');
+    root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+    root.querySelectorAll('[data-navcat]').forEach(b => b.onclick = () => {
+      this.filters.cat = b.dataset.navcat;
+      root.querySelectorAll('[data-navcat]').forEach(x => x.classList.toggle('active', x.dataset.navcat === this.filters.cat && this.filters.cat !== 'todos'));
+      root.querySelector('[data-navcat="todos"]').classList.toggle('hidden', this.filters.cat === 'todos');
+      this.renderGrid();
+      go('shopSingles');
+    });
 
     document.getElementById('shopSearch').oninput = e => { this.filters.q = e.target.value.trim().toLowerCase(); this.renderGrid(); };
     document.getElementById('shopSort').onchange = e => { this.filters.sort = e.target.value; this.renderGrid(); };
@@ -150,51 +159,82 @@ const Shop = {
 
     this.renderAccount();
     this.renderKits();
-    this.renderCats();
     this.renderGrid();
   },
 
-  /* ---------- Cuenta del comprador ---------- */
+  /** Categorías con productos sueltos en esta tienda (para el menú). */
+  navCats() {
+    const used = new Set();
+    this.singles().forEach(p => p.categories.forEach(c => used.add(c)));
+    const cats = SEED.categories.filter(c => used.has(c));
+    return cats.length > 1 ? cats : [];
+  },
+
+  /* ---------- Cuenta del comprador ----------
+     El acceso vive en la barra superior; junto al kit solo se muestra
+     el estado que importa para comprar: si ya tiene el kit o no. */
   renderAccount() {
-    const box = document.getElementById('shopAccount');
-    if (!box) return;
     const st = this.store;
     const c = Store.session;
     const needsKit = st.kitRequired && this.kits().length > 0;
 
+    const btn = document.getElementById('acctBtn');
+    if (btn) {
+      btn.innerHTML = c
+        ? `<span class="acct-dot">${UI.esc(c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase())}</span><span class="label">${UI.esc(c.name.split(' ')[0])}</span>`
+        : `${UI.icon('user')}<span class="label">${I18N.t('acct.signInShort')}</span>`;
+      btn.setAttribute('aria-label', c ? I18N.t('acct.menuAria', { name: c.name }) : I18N.t('acct.signIn'));
+      btn.onclick = () => (c ? this.accountMenu() : this.accountForm());
+    }
+
+    const box = document.getElementById('shopAccount');
+    if (!box) return;
+    if (!needsKit) { box.innerHTML = ''; return; }
+
     if (!c) {
       box.innerHTML = `
-        <div class="acct-bar">
-          <div class="acct-ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-          <div class="acct-text">
-            <div class="acct-title">${I18N.t('acct.guestTitle')}</div>
-            <div class="acct-sub">${I18N.t(needsKit ? 'acct.guestSubKit' : 'acct.guestSub')}</div>
-          </div>
-          <button class="btn btn-sm" id="acctIn">${I18N.t('acct.signIn')}</button>
+        <div class="kit-status">
+          ${UI.icon('user')}
+          <span>${I18N.t('acct.guestSubKit')}</span>
+          <button class="link-btn" id="acctIn">${I18N.t('acct.signIn')}</button>
         </div>`;
       document.getElementById('acctIn').onclick = () => this.accountForm();
       return;
     }
 
-    const src = needsKit ? Store.kitSource(c, st.id) : null;
-    const kitBadge = !needsKit ? ''
-      : src
-        ? `<span class="badge badge-ok"><span class="dot"></span>${I18N.t('acct.kitOwned')}</span>`
-        : `<span class="badge badge-warn"><span class="dot"></span>${I18N.t('acct.kitPending')}</span>`;
-    const kitNote = !needsKit ? I18N.t('acct.signedSub')
-      : src ? I18N.t('acct.kitOwnedSub.' + src.type, { ref: UI.esc(src.ref || '') })
-            : I18N.t('acct.kitPendingSub');
-
+    const src = Store.kitSource(c, st.id);
     box.innerHTML = `
-      <div class="acct-bar">
-        <div class="acct-ico on">${UI.esc(c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase())}</div>
-        <div class="acct-text">
-          <div class="acct-title">${I18N.t('acct.hello', { name: UI.esc(c.name.split(' ')[0]) })} ${kitBadge}</div>
-          <div class="acct-sub">${UI.esc(c.email)} · ${kitNote}</div>
-        </div>
-        <button class="btn btn-sm btn-ghost" id="acctOut">${I18N.t('acct.signOut')}</button>
+      <div class="kit-status ${src ? 'ok' : 'pending'}">
+        <span class="badge ${src ? 'badge-ok' : 'badge-warn'}"><span class="dot"></span>${I18N.t(src ? 'acct.kitOwned' : 'acct.kitPending')}</span>
+        <span>${I18N.t('acct.hello', { name: UI.esc(c.name.split(' ')[0]) })} · ${src ? I18N.t('acct.kitOwnedSub.' + src.type, { ref: UI.esc(src.ref || '') }) : I18N.t('acct.kitPendingSub')}</span>
       </div>`;
+  },
+
+  /** Menú de la cuenta: datos, estado del kit en cada tienda y salir. */
+  accountMenu() {
+    const c = Store.session;
+    if (!c) return this.accountForm();
+    const stores = App.storefront ? [this.store] : Store.stores.filter(s => s.kitRequired);
+    UI.modal(`
+      <div class="modal-head">
+        <div><h2>${UI.esc(c.name)}</h2><p class="muted tiny" style="margin-top:2px">${UI.esc(c.email)}</p></div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        ${stores.map(s => {
+          const src = Store.kitSource(c, s.id);
+          return `<div class="kv"><span class="k">${UI.esc(s.name)}</span><span class="v">${src
+            ? `<span class="badge badge-ok"><span class="dot"></span>${I18N.t('acct.kitOwned')}</span>`
+            : `<span class="badge badge-warn"><span class="dot"></span>${I18N.t('acct.kitPending')}</span>`}</span></div>`;
+        }).join('')}
+        <p class="tiny muted" style="margin-top:12px">${I18N.t('acct.ordersCount', { n: c.orders })}</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="acctOut">${I18N.t('acct.signOut')}</button>
+        <button class="btn btn-primary" onclick="UI.closeModal()">${I18N.t('ui.close')}</button>
+      </div>`, 'narrow');
     document.getElementById('acctOut').onclick = () => {
+      UI.closeModal();
       Store.signOut();
       this.form = null;
       this.renderAccount();
@@ -280,29 +320,40 @@ const Shop = {
     const grid = document.getElementById('shopKitGrid');
     if (!grid) return;
 
+    const required = this.store.kitRequired;
     grid.innerHTML = this.kits().map(p => {
       const parts = Store.kitParts(p);
       const save = Store.kitSavings(p);
       const out = Store.productStatus(p) === 'agotado';
+      // Tallas de ropa del kit, marcando las que no se pueden armar completas.
+      const sizes = this.kitMainSizes(p).map(s => {
+        const ok = parts.every(x => {
+          if (x.product.variants.length === 1) return Store.available(x.product.variants[0]) >= x.qty;
+          const want = x.product.kind === 'socks' ? SEED.sockFor[s] : s;
+          const v = x.product.variants.find(k => k.size === want) || (x.product.kind === 'socks' ? x.product.variants.find(k => Store.available(k) >= x.qty) : null);
+          return v && Store.available(v) >= x.qty;
+        });
+        return `<button class="sz-pick ${ok ? '' : 'off'}" data-kitsize="${s}" ${ok ? '' : 'disabled'} title="${UI.esc(UI.sizeTitle(s))}">${s}</button>`;
+      }).join('');
       return `
         <article class="kit-card" data-kit="${p.id}" tabindex="0" role="button" aria-label="${I18N.t('shop.viewProduct', { name: UI.esc(p.name) })}">
           <div class="kit-media" style="background:${UI.mediaBg()}">
             ${UI.media(p)}
-            ${out ? `<div class="p-flags"><span class="badge badge-danger">${I18N.t('shop.badgeOut')}</span></div>` : ''}
+            <div class="p-flags">
+              ${required ? `<span class="badge badge-brand">${I18N.t('shop.badgeRequired')}</span>` : ''}
+              ${out ? `<span class="badge badge-danger">${I18N.t('shop.badgeOut')}</span>` : ''}
+            </div>
           </div>
           <div class="kit-info">
             <div class="p-cat">${UI.esc(UI.catNames(p))}${UI.lineName(p) ? ' · ' + UI.esc(UI.lineName(p)) : ''}</div>
             <h3 class="kit-name">${UI.esc(p.name)}</h3>
-            <ul class="kit-list">
-              ${parts.map(x => `<li><span class="q">${x.qty}×</span> ${UI.esc(x.product.name)}</li>`).join('')}
-            </ul>
-            <div class="kit-foot">
-              <div>
-                <div class="p-price">${UI.money(p.price)}${save ? ` <span class="was">${UI.money(Store.kitListPrice(p))}</span>` : ''}</div>
-                ${save ? `<div class="kit-save">${I18N.t('shop.kitSave', { amount: UI.money(save) })}</div>` : `<div class="p-stock muted">${I18N.t('shop.kitPieces', { n: parts.reduce((s, x) => s + x.qty, 0) })}</div>`}
-              </div>
-              <span class="btn btn-primary btn-sm">${I18N.t('shop.kitChoose')}</span>
+            <div class="kit-price">
+              <span class="p-price">${UI.money(p.price)}</span>
+              ${save ? `<span class="was">${UI.money(Store.kitListPrice(p))}</span><span class="kit-save">${I18N.t('shop.kitSave', { amount: UI.money(save) })}</span>` : ''}
             </div>
+            <p class="kit-includes"><b>${I18N.t('shop.kitIncludes')}</b> ${parts.map(x => `${x.qty > 1 ? x.qty + '× ' : ''}${UI.esc(x.product.name)}`).join(' · ')}</p>
+            ${sizes ? `<div class="kit-sizes" aria-label="${I18N.t('shop.size')}">${sizes}</div>` : ''}
+            <span class="btn btn-brand btn-block kit-cta">${I18N.t('shop.kitChoose')}</span>
           </div>
         </article>`;
     }).join('');
@@ -311,28 +362,15 @@ const Shop = {
       const open = () => this.openKit(card.dataset.kit);
       card.onclick = open;
       card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
+      // Elegir una talla en la tarjeta abre el kit con esa talla ya puesta.
+      card.querySelectorAll('[data-kitsize]').forEach(b => b.onclick = e => {
+        e.stopPropagation();
+        this.openKit(card.dataset.kit, b.dataset.kitsize);
+      });
     });
   },
 
   /* ---------- Piezas sueltas ---------- */
-  renderCats() {
-    const box = document.getElementById('shopCats');
-    if (!box) return;
-    const used = new Set();
-    this.singles().forEach(p => p.categories.forEach(c => used.add(c)));
-    const cats = ['todos'].concat(SEED.categories.filter(c => used.has(c)));
-    if (cats.length <= 2) { box.innerHTML = ''; box.style.display = 'none'; return; }
-    box.style.display = '';
-    box.innerHTML = cats.map(c =>
-      `<button class="chip ${this.filters.cat === c ? 'active' : ''}" data-cat="${c}">${I18N.t(c === 'todos' ? 'shop.catAll' : 'cat.' + c)}</button>`
-    ).join('');
-    box.querySelectorAll('.chip').forEach(btn => btn.onclick = () => {
-      this.filters.cat = btn.dataset.cat;
-      this.renderCats();
-      this.renderGrid();
-    });
-  },
-
   visibleProducts() {
     let list = this.singles();
     if (this.filters.cat !== 'todos') list = list.filter(p => p.categories.includes(this.filters.cat));
@@ -361,7 +399,8 @@ const Shop = {
     const list = this.visibleProducts();
     const count = document.getElementById('shopResultCount');
     count.textContent = list.length
-      ? I18N.t(list.length === 1 ? 'shop.results' : 'shop.resultsPlural', { n: list.length })
+      ? I18N.t(list.length === 1 ? 'shop.results' : 'shop.resultsPlural', { n: list.length }) +
+        (this.filters.cat !== 'todos' ? ' · ' + I18N.t('cat.' + this.filters.cat) : '')
       : '';
 
     if (!list.length) {
@@ -396,13 +435,8 @@ const Shop = {
           <div class="p-info">
             <div class="p-cat">${UI.esc(UI.catNames(p))}</div>
             <div class="p-name">${UI.esc(p.name)}</div>
+            <div class="p-price">${UI.money(p.price)}</div>
             <div class="p-sizes">${sizes}</div>
-            <div class="p-meta">
-              <div class="p-price">${UI.money(p.price)}</div>
-              <div class="p-stock">${total > 0
-                ? `<span class="muted">${I18N.t('shop.availableCount', { n: total })}</span>`
-                : `<span style="color:var(--danger-600);font-weight:600">${I18N.t('shop.noStock')}</span>`}</div>
-            </div>
           </div>
         </article>`;
     }).join('');
@@ -566,16 +600,28 @@ const Shop = {
   },
 
   /* ---------- Configurador de kit: una talla por pieza ---------- */
-  openKit(id) {
+  /** quickSize: talla elegida desde la tarjeta; se aplica a todas las piezas. */
+  openKit(id, quickSize) {
     const p = Store.product(id);
     if (!p) return;
     const sizes = {};
     Store.kitParts(p).forEach(x => {
       if (x.product.variants.length === 1) sizes[x.product.id] = x.product.variants[0].size;
     });
-    this.kit = { productId: id, sizes, player: '', img: null };
+    this.kit = { productId: id, sizes, player: '', birthYear: '', team: '', img: null };
+    if (quickSize) this.applyQuickSize(p, quickSize);
     UI.modal(this.kitHTML(p), 'wide');
     this.bindKit();
+  },
+
+  /** Una talla para todo el kit: cada pieza la toma; las medias, su equivalente. */
+  applyQuickSize(p, s) {
+    Store.kitParts(p).forEach(x => {
+      const sizes = x.product.variants.map(v => v.size);
+      if (sizes.length === 1) return;
+      const want = x.product.kind === 'socks' ? SEED.sockFor[s] : s;
+      if (sizes.includes(want)) this.kit.sizes[x.product.id] = want;
+    });
   },
 
   /** Tallas de ropa que ofrece el kit (las medias tienen su propia escala). */
@@ -639,10 +685,27 @@ const Shop = {
 
             <div style="height:1px;background:var(--border);margin:18px 0"></div>
 
-            <div class="field">
-              <label for="kitPlayer">${I18N.t('kit.player')}</label>
-              <input class="input" id="kitPlayer" value="${UI.esc(this.kit.player)}" placeholder="${I18N.t('kit.playerPh')}" autocomplete="off">
-              <div class="hint">${I18N.t('kit.playerHint')}</div>
+            <div class="kit-player">
+              <div class="opt-label"><span>${I18N.t('kit.playerData')}</span><span class="opt-aside">${I18N.t('kit.playerHint')}</span></div>
+              <div class="form-grid tight">
+                <div class="field span-2">
+                  <label for="kitPlayer">${I18N.t('kit.player')} <span class="req">*</span></label>
+                  <input class="input" id="kitPlayer" value="${UI.esc(this.kit.player)}" placeholder="${I18N.t('kit.playerPh')}" autocomplete="off">
+                  <div class="err-msg" id="errKitPlayer">${I18N.t('kit.playerErr')}</div>
+                </div>
+                <div class="field">
+                  <label for="kitYear">${I18N.t('kit.birthYear')} <span class="req">*</span></label>
+                  <select class="select" id="kitYear">
+                    <option value="">${I18N.t('kit.pick')}</option>
+                    ${this.birthYears().map(y => `<option value="${y}"${String(this.kit.birthYear) === String(y) ? ' selected' : ''}>${y}</option>`).join('')}
+                  </select>
+                  <div class="err-msg" id="errKitYear">${I18N.t('kit.birthYearErr')}</div>
+                </div>
+                <div class="field">
+                  <label for="kitTeam">${I18N.t('kit.team')}</label>
+                  <input class="input" id="kitTeam" value="${UI.esc(this.kit.team)}" placeholder="${I18N.t('kit.teamPh')}" autocomplete="off">
+                </div>
+              </div>
             </div>
 
             ${mains.length ? `
@@ -681,7 +744,7 @@ const Shop = {
 
       <div class="modal-foot">
         <button class="btn" onclick="UI.closeModal()">${I18N.t('shop.keepShopping')}</button>
-        <button class="btn btn-gold" id="addKit" ${ready ? '' : 'disabled'}>
+        <button class="btn btn-brand" id="addKit" ${ready ? '' : 'disabled'}>
           ${ready ? I18N.t('kit.add', { price: UI.money(p.price) })
                   : (missing ? I18N.t(missing === 1 ? 'kit.missingOne' : 'kit.missing', { n: missing }) : I18N.t('kit.unavailable'))}
         </button>
@@ -699,19 +762,18 @@ const Shop = {
     const box = document.getElementById('modalBox');
 
     const player = document.getElementById('kitPlayer');
-    player.oninput = () => { this.kit.player = player.value; };
+    const year = document.getElementById('kitYear');
+    const team = document.getElementById('kitTeam');
+    // El aviso desaparece en cuanto el dato queda completo.
+    const clearErr = (el, errId, okNow) => { if (okNow) { el.classList.remove('error'); document.getElementById(errId).classList.remove('show'); } };
+    player.oninput = () => { this.kit.player = player.value; clearErr(player, 'errKitPlayer', player.value.trim()); };
+    year.onchange = () => { this.kit.birthYear = year.value; clearErr(year, 'errKitYear', year.value); };
+    team.oninput = () => { this.kit.team = team.value; };
 
     box.querySelectorAll('[data-img]').forEach(b => b.onclick = () => { this.kit.img = b.dataset.img; this.refreshKit(); });
 
-    // Una talla para todo: se aplica a cada pieza que la tenga; las medias toman su equivalente.
     box.querySelectorAll('[data-quick]').forEach(b => b.onclick = () => {
-      const s = b.dataset.quick;
-      Store.kitParts(p).forEach(x => {
-        const sizes = x.product.variants.map(v => v.size);
-        if (sizes.length === 1) return;
-        const want = x.product.kind === 'socks' ? SEED.sockFor[s] : s;
-        if (sizes.includes(want)) this.kit.sizes[x.product.id] = want;
-      });
+      this.applyQuickSize(p, b.dataset.quick);
       this.refreshKit();
     });
 
@@ -721,12 +783,34 @@ const Shop = {
     });
 
     document.getElementById('addKit').onclick = () => {
+      // Quien prepara la orden necesita saber para qué jugador es cada kit.
+      const missName = !this.kit.player.trim(), missYear = !this.kit.birthYear;
+      player.classList.toggle('error', missName);
+      year.classList.toggle('error', missYear);
+      document.getElementById('errKitPlayer').classList.toggle('show', missName);
+      document.getElementById('errKitYear').classList.toggle('show', missYear);
+      if (missName || missYear) { (missName ? player : year).focus(); return; }
+
       const rows = this.kitRows(p);
-      const r = Store.addKit(p.id, rows.map(x => ({ productId: x.product.id, variantId: x.variant && x.variant.id })), 1, this.kit.player);
+      const r = Store.addKit(p.id, rows.map(x => ({ productId: x.product.id, variantId: x.variant && x.variant.id })), 1,
+        { name: this.kit.player, birthYear: this.kit.birthYear, team: this.kit.team });
       if (!r.ok) { UI.toast('danger', I18N.t('shop.notFoundTitle'), r.error); return; }
       UI.closeModal();
-      this.afterAdd(this.kit.player ? I18N.t('kit.addedFor', { name: p.name, player: this.kit.player }) : p.name);
+      this.afterAdd(I18N.t('kit.addedFor', { name: p.name, player: this.kit.player.trim() }));
     };
+  },
+
+  /** Años de nacimiento razonables para un jugador de 3 a 19 años. */
+  birthYears() {
+    const now = new Date().getFullYear();
+    const out = [];
+    for (let y = now - 3; y >= now - 19; y--) out.push(y);
+    return out;
+  },
+
+  /** "Mateo Gómez · 2016 · U10 Blue" */
+  playerLine(l) {
+    return [l.player, l.birthYear, l.team].filter(Boolean).map(x => UI.esc(String(x))).join(' · ');
   },
 
   /* ============================================================
@@ -801,7 +885,7 @@ const Shop = {
     body.innerHTML = this.gateBannerHTML() + cart.map(l => {
       const p = Store.product(l.productId) || { kind: 'jersey', name: l.name };
       const detail = l.kind === 'kit'
-        ? `<div class="cart-variant">${l.player ? UI.esc(l.player) + ' · ' : ''}${I18N.t('cart.kitLine')}</div>
+        ? `<div class="cart-variant">${l.player ? this.playerLine(l) + ' · ' : ''}${I18N.t('cart.kitLine')}</div>
            <ul class="cart-comps">${l.components.map(c => `<li>${c.qty > 1 ? c.qty + '× ' : ''}${UI.esc(c.name)} <b>${UI.esc(UI.sizeLabel(c.size))}</b></li>`).join('')}</ul>`
         : `<div class="cart-variant">${I18N.t('shop.size')} ${UI.esc(UI.sizeLabel(l.size))} · <span class="mono">${UI.esc(l.sku)}</span></div>`;
       return `
@@ -911,7 +995,7 @@ const Shop = {
     return `
       <div style="font-weight:640;margin-bottom:10px">${I18N.t('checkout.orderSummary')}</div>
       ${Store.cart.map(l => `
-        <div class="row"><span>${UI.esc(l.name)}${l.kind === 'kit' ? (l.player ? ' · ' + UI.esc(l.player) : '') : ' · ' + UI.esc(UI.sizeLabel(l.size))} × ${l.qty}</span><b>${UI.money(l.price * l.qty)}</b></div>
+        <div class="row"><span>${UI.esc(l.name)}${l.kind === 'kit' ? (l.player ? ' · ' + this.playerLine(l) : '') : ' · ' + UI.esc(UI.sizeLabel(l.size))} × ${l.qty}</span><b>${UI.money(l.price * l.qty)}</b></div>
         ${l.kind === 'kit' ? `<div class="row sub"><span>${l.components.map(c => UI.esc(c.name) + ' ' + UI.esc(UI.sizeLabel(c.size))).join(' · ')}</span></div>` : ''}
       `).join('')}
       <div style="height:1px;background:#3a3f4a;margin:10px 0"></div>
@@ -1166,7 +1250,7 @@ const Shop = {
           <div class="r-row"><span class="muted">${I18N.t('confirm.paymentMethod')}</span><b>${UI.esc(o.paymentMethod)}</b></div>
           <div style="height:1px;background:var(--border-strong);margin:8px 0"></div>
           ${o.items.map(i => `
-            <div class="r-row"><span>${UI.esc(i.name)}${i.kind === 'kit' ? (i.player ? ' · ' + UI.esc(i.player) : '') : ' · ' + UI.esc(UI.sizeLabel(i.size))} × ${i.qty}</span><b>${UI.money(i.price * i.qty)}</b></div>
+            <div class="r-row"><span>${UI.esc(i.name)}${i.kind === 'kit' ? (i.player ? ' · ' + this.playerLine(i) : '') : ' · ' + UI.esc(UI.sizeLabel(i.size))} × ${i.qty}</span><b>${UI.money(i.price * i.qty)}</b></div>
             ${i.kind === 'kit' ? `<div class="r-row sub"><span>${i.components.map(c => UI.esc(c.name) + ' ' + UI.esc(UI.sizeLabel(c.size))).join(' · ')}</span></div>` : ''}`).join('')}
           <div style="height:1px;background:var(--border-strong);margin:8px 0"></div>
           <div class="r-row"><span class="muted">${I18N.t('cart.subtotal')}</span><b>${UI.money(o.subtotal)}</b></div>

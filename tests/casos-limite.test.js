@@ -154,7 +154,7 @@ const mem2 = {};
 const b1 = boot(mem2);
 b1.S.applyMovement({ variantId: 'camp-socks-M', type: 'entrada', qty: 7, reason: 'purchase', ref: 'ANTES' });
 const ordersAntes = b1.S.orders.length, stockAntes = b1.S.variantOf('camp-socks', 'M').stock;
-const st = JSON.parse(mem2.soccercage_db_v2); st.version = '5:2020-01-01'; mem2.soccercage_db_v2 = JSON.stringify(st);
+const st = JSON.parse(mem2.soccercage_db_v2); st.version = String(st.version).split(':')[0] + ':2020-01-01'; mem2.soccercage_db_v2 = JSON.stringify(st);
 const b2 = boot(mem2);
 ok(b2.S.orders.length === ordersAntes && b2.S.variantOf('camp-socks', 'M').stock === stockAntes, 'con fecha de catálogo distinta se conservan pedidos y stock', { pedidos: b2.S.orders.length, stock: b2.S.variantOf('camp-socks', 'M').stock });
 ok(b2.S.state.version === b2.S.versionTag(), 'la versión queda actualizada tras la fusión');

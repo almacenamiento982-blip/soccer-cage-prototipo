@@ -9,7 +9,7 @@ vm.runInContext(fs.readFileSync(path.join(DOCS, 'js/i18n.js'), 'utf8') + '\nglob
 const DICT = ctx.__D;
 
 const NS = ['nav', 'shop', 'cart', 'checkout', 'pay', 'confirm', 'side', 'adm', 'cmp', 'err', 'sys', 'acct', 'gate', 'kit',
-  'fulfill', 'store', 'cat', 'kind', 'size', 'reason', 'stock', 'order', 'role', 'program', 'time', 'ui'];
+  'fulfill', 'store', 'cat', 'kind', 'size', 'reason', 'stock', 'order', 'role', 'program', 'time', 'ui', 'imp', 'mail'];
 const keyRe = /['"`]((?:[a-z][A-Za-z0-9]*)(?:\.[A-Za-z0-9_]+)+)['"`]/g;
 
 const used = new Map();
