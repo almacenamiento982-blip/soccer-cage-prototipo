@@ -87,8 +87,8 @@ const Shop = {
         ${UI.storeMark(st, 64)}
         <div class="sf-band-text">
           <div class="sf-eyebrow">${UI.esc(st.name)} · ${I18N.t('shop.official')}</div>
-          <h1>${I18N.t(heroKey + '.title')}</h1>
-          <p>${I18N.t(heroKey + '.body')}</p>
+          <h1>${UI.esc(st.headline || I18N.t(heroKey + '.title'))}</h1>
+          <p>${UI.esc(st.blurb || I18N.t(heroKey + '.body'))}</p>
         </div>
         <ul class="sf-perks">
           ${st.pickup ? `<li>${UI.icon('pin')}<span>${UI.esc(pickupLabel)} · <b>${I18N.t('shop.factPickupV')}</b></span></li>` : ''}

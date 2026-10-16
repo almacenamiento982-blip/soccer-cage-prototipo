@@ -1471,5 +1471,12 @@ const I18N = {
     'adm.dashboard.unloadedTitle': { es: '{n} tallas aún sin inventario cargado', en: '{n} sizes with no stock loaded yet' },
     'adm.dashboard.unloadedBody': { es: 'No cuentan como agotadas ni generan alertas. Se cargan con Inventario → Importar Excel (conteo físico) o al registrar la llegada de un pedido a proveedor.', en: 'They do not count as out of stock or trigger alerts. Load them via Inventory → Import Excel (physical count) or by recording a supplier order arrival.' },
     'adm.dashboard.unloadedBtn': { es: 'Cargar inventario', en: 'Load stock' },
+    'adm.pf.uploading': { es: 'Subiendo la foto…', en: 'Uploading photo…' },
+    'adm.pf.uploadFail': { es: 'No se pudo subir la foto al almacenamiento', en: 'Could not upload the photo to storage' },
+    'adm.pf.uploadFailBody': { es: 'Quedó guardada igual, dentro de los datos. Revisa la conexión y, si pasa siempre, avisa.', en: 'It was still saved, inside the data. Check the connection and report it if it keeps happening.' },
+    'adm.stores.headline': { es: 'Título en la tienda', en: 'Store headline' },
+    'adm.stores.blurb': { es: 'Texto de presentación', en: 'Intro text' },
+    'adm.stores.textsHint': { es: 'Lo que ve el cliente arriba de la tienda. Vacío = el texto de siempre.', en: 'What customers see at the top of the store. Empty = the default text.' },
+    'err.storeTexts': { es: 'El título admite hasta 80 caracteres y el texto hasta 300.', en: 'The headline allows up to 80 characters and the text up to 300.' },
   }
 };

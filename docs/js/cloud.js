@@ -218,6 +218,28 @@ const Cloud = {
 
   status(s, err) { if (this.onStatus) this.onStatus(s, err); },
 
+  /* ---------- Fotos (almacenamiento de archivos) ----------
+     La foto ya llega reducida. Nombre único: nunca se pisa otra foto. */
+  async uploadImage(blob, folder) {
+    const name = (folder || 'productos') + '/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+    let res;
+    try {
+      res = await fetch(this.cfg.url + '/storage/v1/object/fotos/' + name, {
+        method: 'POST',
+        headers: { apikey: this.cfg.key, Authorization: 'Bearer ' + (await this.accessToken()), 'Content-Type': 'image/jpeg', 'cache-control': '31536000' },
+        body: blob
+      });
+    } catch (e) {
+      const err = new Error('offline'); err.code = 'offline'; throw err;
+    }
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const d = await res.json(); msg = d.message || d.error || msg; } catch (e) { /* sin cuerpo */ }
+      const err = new Error(msg); err.status = res.status; throw err;
+    }
+    return this.cfg.url + '/storage/v1/object/public/fotos/' + name;
+  },
+
   /* ---------- Equipo y copias (solo administradores) ---------- */
   listStaff() { return this.rpc('list_staff'); },
   upsertStaff(email, name, role) { return this.rpc('upsert_staff', { p_email: email, p_name: name, p_role: role }); },

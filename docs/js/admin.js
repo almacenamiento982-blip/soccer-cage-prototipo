@@ -879,7 +879,7 @@ const Admin = {
         if (!data) { UI.toast('danger', I18N.t('adm.pf.imageErr'), I18N.t('adm.pf.imageErrBody')); return; }
         this.draft.image = data;
         this.renderPfImage();
-      });
+      }, 'productos');
     };
     document.getElementById('pfImgClear').onclick = () => { this.draft.image = null; this.renderPfImage(); };
 
@@ -908,7 +908,9 @@ const Admin = {
   },
 
   /** Reduce la foto a 600 px: basta para la tienda y no llena el almacenamiento. */
-  readImage(file, cb) {
+  /** Reduce la foto en el navegador (600 px, JPEG). Con base compartida la sube al
+      almacenamiento y devuelve su enlace; si la subida falla, se queda en los datos. */
+  readImage(file, cb, folder) {
     const r = new FileReader();
     r.onerror = () => cb(null);
     r.onload = () => {
@@ -923,7 +925,15 @@ const Admin = {
         g.fillStyle = '#fff';
         g.fillRect(0, 0, c.width, c.height);
         g.drawImage(img, 0, 0, c.width, c.height);
-        cb(c.toDataURL('image/jpeg', 0.85));
+        const data = c.toDataURL('image/jpeg', 0.85);
+        if (!(Store.cloudMode && Cloud.signedIn)) { cb(data); return; }
+        UI.toast('info', I18N.t('adm.pf.uploading'), '');
+        c.toBlob(blob => {
+          Cloud.uploadImage(blob, folder).then(cb).catch(e => {
+            UI.toast('warn', I18N.t('adm.pf.uploadFail'), I18N.t('adm.pf.uploadFailBody'));
+            cb(data);
+          });
+        }, 'image/jpeg', 0.85);
       };
       img.src = r.result;
     };
@@ -2484,6 +2494,15 @@ const Admin = {
               <input class="input" id="sfShort" value="${UI.esc(v('short', ''))}" maxlength="24" placeholder="Chicago">
             </div>
             <div class="field">
+              <label for="sfHeadline">${I18N.t('adm.stores.headline')}</label>
+              <input class="input" id="sfHeadline" value="${UI.esc(v('headline', '') || '')}" maxlength="80" placeholder="${UI.esc(I18N.t((s && I18N.has('store.' + s.id + '.title') ? 'store.' + s.id : 'store.generic') + '.title'))}">
+            </div>
+            <div class="field">
+              <label for="sfBlurb">${I18N.t('adm.stores.blurb')}</label>
+              <textarea class="input" id="sfBlurb" rows="3" maxlength="300" placeholder="${UI.esc(I18N.t((s && I18N.has('store.' + s.id + '.body') ? 'store.' + s.id : 'store.generic') + '.body'))}">${UI.esc(v('blurb', '') || '')}</textarea>
+              <div class="hint">${I18N.t('adm.stores.textsHint')}</div>
+            </div>
+            <div class="field">
               <label>${I18N.t('adm.stores.brand')}</label>
               <div class="swatches" id="sfSwatches">
                 ${SEED.brandPalette.map(c => `<button type="button" class="swatch ${d.brand.toLowerCase() === c ? 'sel' : ''}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}
@@ -2548,7 +2567,7 @@ const Admin = {
         if (!data) { UI.toast('danger', I18N.t('adm.pf.imageErr'), I18N.t('adm.pf.imageErrBody')); return; }
         d.logo = data;
         preview();
-      });
+      }, 'tiendas');
     };
     document.getElementById('sfLogoClear').onclick = () => { d.logo = null; preview(); };
 
@@ -2562,7 +2581,8 @@ const Admin = {
         pickup: document.getElementById('sfPickup').checked,
         shipping: document.getElementById('sfShipping').checked,
         active: document.getElementById('sfActive').checked,
-        stripeAccount: val('sfStripe'), brand: d.brand, logo: d.logo
+        stripeAccount: val('sfStripe'), brand: d.brand, logo: d.logo,
+        headline: val('sfHeadline'), blurb: val('sfBlurb')
       };
       const err = document.getElementById('sfErr');
       const nameInput = document.getElementById('sfName');

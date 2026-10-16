@@ -24,7 +24,8 @@ function fakeSupabase() {
     staff: [{ email: 'admin@soccercage.com', name: 'Soccer Cage', role: 'admin' }],
     state: { rev: 0, data: null, updated_by: null },
     history: [],
-    calls: []
+    calls: [],
+    files: []
   };
   const strip = (o, keys) => { const c = Object.assign({}, o); keys.forEach(k => delete c[k]); return c; };
   const who = req => {
@@ -36,9 +37,19 @@ function fakeSupabase() {
   const handle = async route => {
     const req = route.request();
     const url = new URL(req.url());
-    const body = req.postData() ? JSON.parse(req.postData()) : {};
+    const isJson = String(req.headers()['content-type'] || '').includes('json');
+    const body = isJson && req.postData() ? JSON.parse(req.postData()) : {};
     const send = (status, data) => route.fulfill({ status, contentType: 'application/json', body: data === undefined ? '' : JSON.stringify(data) });
+    // Fotos públicas: se sirven sin clave, como en Supabase.
+    if (url.pathname.startsWith('/storage/v1/object/public/fotos/')) {
+      return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64') });
+    }
     if (req.headers()['apikey'] !== 'sb_publishable_prueba') return send(401, { message: 'Invalid API key' });
+    if (url.pathname.startsWith('/storage/v1/object/fotos/')) {
+      if (!member(who(req))) return send(403, { message: 'new row violates row-level security policy' });
+      db.files.push(url.pathname.slice('/storage/v1/object/fotos/'.length));
+      return send(200, { Key: 'fotos/' + db.files[db.files.length - 1] });
+    }
     db.calls.push(url.pathname.replace('/rest/v1/rpc/', 'rpc:'));
 
     if (url.pathname === '/auth/v1/token') {
@@ -199,6 +210,29 @@ const login = async (page, email, pass) => {
   ok(await page.locator('#histList [data-restore]').count() > 0, 'se ven las copias de seguridad');
   await page.shot('62-nube-equipo');
 
+  console.log('\n== Fotos y textos de la tienda, sin programador ==');
+  await page.click('.side-link[data-page="products"]');
+  await page.click('[data-edit="camp-jersey"]');
+  await page.waitForSelector('#pfFile', { state: 'attached' });
+  await page.setInputFiles('#pfFile', { name: 'camiseta.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64') });
+  await page.waitForFunction(api => Admin.draft && String(Admin.draft.image).startsWith(api + '/storage/v1/object/public/fotos/productos/'), API);
+  ok(fake.db.files.length === 1 && fake.db.files[0].startsWith('productos/'), 'la foto se reduce y se sube sola al almacenamiento', fake.db.files);
+  await page.click('#pfSave');
+  await page.waitForSelector('#pfSave', { state: 'detached' });
+  await page.waitForFunction(() => !Cloud.pending);
+  const img = fake.db.state.data.products.find(p => p.id === 'camp-jersey').image;
+  ok(img.startsWith(API + '/storage/') && !JSON.stringify(fake.db.state.data).includes('data:image'), 'en los datos queda solo el enlace, no la imagen', img.slice(0, 70));
+  await page.click('.side-link[data-page="stores"]');
+  await page.click('[data-edit-store="camps"]');
+  await page.waitForSelector('#sfHeadline');
+  await page.fill('#sfHeadline', 'Uniformes del Summer Camp 2027');
+  await page.fill('#sfBlurb', 'Pídelo hoy y recógelo el primer día del campamento.');
+  await page.click('#sfSave');
+  await page.waitForSelector('#sfSave', { state: 'detached' });
+  await page.waitForFunction(() => !Cloud.pending);
+  const camps = fake.db.state.data.stores.find(x => x.id === 'camps');
+  ok(camps.headline === 'Uniformes del Summer Camp 2027' && /primer día/.test(camps.blurb), 'el título y el texto de la tienda se editan desde el panel', camps.headline);
+
   console.log('\n== La sesión sobrevive a la recarga ==');
   await page.reload();
   await page.waitForSelector('#userChip');
@@ -233,6 +267,8 @@ const login = async (page, email, pass) => {
   await page.waitForSelector('.kit-card');
   const leaked = await page.evaluate(() => ({ cost: Store.products.some(p => p.cost !== undefined), orders: Store.orders.length, customers: Store.customers.length }));
   ok(!leaked.cost && leaked.orders === 0 && leaked.customers === 0, 'el visitante no recibe costos, pedidos ni clientes', leaked);
+  ok(await page.locator('.sf-band h1').innerText() === 'Uniformes del Summer Camp 2027', 'la tienda pública muestra el título editado');
+  ok(await page.evaluate(() => [...document.images].some(i => i.src.includes('/storage/v1/object/public/fotos/'))), 'y la foto nueva desde el almacenamiento');
   const stockSeen = await page.evaluate(v => Store.findVariant(v).variant.stock, vid);
   ok(stockSeen === fake.db.state.data.products.find(p => p.id === 'camp-socks').variants.find(v => v.id === vid).stock, 've el stock real del servidor', stockSeen);
   const rev0 = fake.db.state.rev, calls0 = fake.db.calls.length;

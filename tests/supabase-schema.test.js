@@ -110,6 +110,28 @@ const ok = (cond, label, extra) => {
   const b = (await as('authenticated', 'eduardo@soccercage.com', 'select public.save_state($1, $2::jsonb) as r', [base.rev, JSON.stringify(base.data)]))[0].r;
   ok(a.ok && !b.ok && b.conflict && b.updated_by === admin, 'dos personas guardan sobre la misma versión: la segunda recibe conflicto y sabe quién guardó', b);
 
+  console.log('\n== Fotos (supabase/storage.sql) ==');
+  // Lo mínimo del esquema de archivos de Supabase para probar las reglas.
+  await db.exec(`
+    create schema storage;
+    create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
+    create table storage.objects (id bigserial primary key, bucket_id text, name text);
+    alter table storage.objects enable row level security;
+    grant usage on schema storage to anon, authenticated;
+    grant select, insert, delete on storage.objects to anon, authenticated;
+    grant usage, select on sequence storage.objects_id_seq to anon, authenticated;
+  `);
+  const storageSql = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'storage.sql'), 'utf8');
+  await db.exec(storageSql);
+  await db.exec(storageSql);
+  const bucket = (await db.query(`select * from storage.buckets where id = 'fotos'`)).rows[0];
+  ok(bucket && bucket.public === true && Number(bucket.file_size_limit) === 2097152, 'carpeta "fotos" pública, máximo 2 MB, se puede aplicar dos veces', bucket);
+  const up = (role, email) => fails_(() => as(role, email, `insert into storage.objects (bucket_id, name) values ('fotos', 'productos/x.jpg')`));
+  ok((await up('authenticated', 'eduardo@soccercage.com')) === null, 'alguien del equipo puede subir una foto');
+  ok(!!(await up('authenticated', 'intruso@gmail.com')), 'una cuenta ajena no puede subir');
+  ok(!!(await up('anon', null)), 'un visitante no puede subir');
+  ok(!!(await fails_(() => as('authenticated', 'eduardo@soccercage.com', `insert into storage.objects (bucket_id, name) values ('otra', 'x.jpg')`))), 'ni siquiera el equipo sube a otra carpeta');
+
   await db.close();
   console.log(fails ? `\n${fails} FALLOS` : '\nTODO OK');
   process.exit(fails ? 1 : 0);

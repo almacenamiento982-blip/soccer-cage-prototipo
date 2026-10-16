@@ -295,6 +295,7 @@ const Store = {
     if (!data.pickup && !data.shipping) return I18N.t('adm.stores.needDeliveryBody');
     if (data.brand && !/^#[0-9a-f]{6}$/i.test(data.brand)) return I18N.t('err.storeBrand');
     if (data.stripeAccount && !/^acct_[A-Za-z0-9]{6,}$/.test(data.stripeAccount)) return I18N.t('err.stripeAccount');
+    if (String(data.headline || '').length > 80 || String(data.blurb || '').length > 300) return I18N.t('err.storeTexts');
     return null;
   },
 
@@ -328,7 +329,8 @@ const Store = {
       active: !!data.active, kitRequired: !!data.kitRequired,
       taxRate: round2(data.taxRate * 1000) / 1000, pickup: !!data.pickup, shipping: !!data.shipping,
       shippingFlat: round2(data.shippingFlat), brand: data.brand || '#111111', logo: data.logo || null,
-      stripeAccount: data.stripeAccount || '', source: null
+      stripeAccount: data.stripeAccount || '', source: null,
+      headline: String(data.headline || '').trim().slice(0, 80), blurb: String(data.blurb || '').trim().slice(0, 300)
     };
     this.state.stores.push(s);
     if (copyFrom && this.storeCfg(copyFrom)) {
