@@ -36,6 +36,8 @@ const App = {
       else UI.toast('info', I18N.t('cloud.updatedTitle'), I18N.t('cloud.updatedBody', { by: info.by || '—' }));
     };
     Cloud.onStatus = (s, err) => this.syncChip(s, err);
+    // La sesión venció con cambios sin guardar: se pide entrar de nuevo y se guardan.
+    Cloud.onSessionLost = () => { if (!document.getElementById('lgGo')) this.loginForm(I18N.t('cloud.sessionLost'), { resume: true }); };
     this.boot(I18N.t('cloud.loading'));
 
     const redirect = Cloud.takeRedirect();
@@ -211,7 +213,7 @@ const App = {
   },
 
   /* ---------- Sesión del equipo (base compartida) ---------- */
-  loginForm(msg) {
+  loginForm(msg, opts = {}) {
     UI.modal(`
       <div class="modal-head">
         <div><h2>${I18N.t('cloud.loginTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('cloud.loginSub')}</p></div>
@@ -245,6 +247,14 @@ const App = {
       try {
         const me = await Cloud.signIn(email, pass);
         if (!me) { await Cloud.signOut(); btn.disabled = false; return err(I18N.t('cloud.notStaff')); }
+        if (opts.resume) {
+          // Se conservan los cambios hechos en esta pestaña y se guardan ahora.
+          UI.closeModal();
+          this.syncUser();
+          Cloud.flush();
+          UI.toast('ok', I18N.t('cloud.resumed'), I18N.t('cloud.resumedBody'));
+          return;
+        }
         await this.loadShared();
         UI.closeModal();
         this.initAdmin();

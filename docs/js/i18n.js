@@ -1478,5 +1478,8 @@ const I18N = {
     'adm.stores.blurb': { es: 'Texto de presentación', en: 'Intro text' },
     'adm.stores.textsHint': { es: 'Lo que ve el cliente arriba de la tienda. Vacío = el texto de siempre.', en: 'What customers see at the top of the store. Empty = the default text.' },
     'err.storeTexts': { es: 'El título admite hasta 80 caracteres y el texto hasta 300.', en: 'The headline allows up to 80 characters and the text up to 300.' },
+    'cloud.sessionLost': { es: 'Tu sesión venció. Entra de nuevo para guardar los cambios que hiciste; no se perdió nada.', en: 'Your session expired. Sign in again to save the changes you made; nothing was lost.' },
+    'cloud.resumed': { es: 'Sesión renovada', en: 'Session renewed' },
+    'cloud.resumedBody': { es: 'Guardando los cambios pendientes.', en: 'Saving your pending changes.' },
   }
 };

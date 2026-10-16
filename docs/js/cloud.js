@@ -55,6 +55,12 @@ const Cloud = {
     } catch (e) {
       const err = new Error('offline'); err.code = 'offline'; throw err;
     }
+    // Sesión vencida justo ahora: se renueva una vez y se repite la llamada.
+    if (res.status === 401 && auth && this.session && !opts._retried) {
+      let renewed = true;
+      try { await this.refresh(); } catch (e) { renewed = false; }
+      if (renewed && this.session) return this.request(path, Object.assign({}, opts, { _retried: true }));
+    }
     const text = await res.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
@@ -166,7 +172,9 @@ const Cloud = {
   },
 
   async flush() {
-    if (this.inflight || !this.dirty || this.failed || !this.signedIn) return;
+    if (this.inflight || !this.dirty || this.failed) return;
+    // Sin sesión (venció o la cerraron en otra pestaña): lo pendiente se conserva y se pide volver a entrar.
+    if (!this.signedIn) { this.status('error'); if (this.onSessionLost) this.onSessionLost(); return; }
     this.inflight = true;
     this.dirty = false;
     this.status('saving');
@@ -185,6 +193,11 @@ const Cloud = {
       }
     } catch (e) {
       this.dirty = true;
+      if (!this.signedIn) {   // la renovación de la sesión falló: no reintentar a ciegas
+        this.status('error', e);
+        if (this.onSessionLost) this.onSessionLost();
+        return;
+      }
       this.failed = true;
       this.status('error', e);
       const wait = this.retryMs;
