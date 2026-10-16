@@ -124,6 +124,13 @@ const login = async (page, email, pass) => {
   await page.click('#btnAdmin');
   await page.waitForSelector('#lgGo');
   ok(await page.locator('#appAdmin.active').count() === 0, 'el panel pide iniciar sesión');
+  await page.fill('#lgPass', 'secreto');
+  await page.click('.pw-eye');
+  ok(await page.getAttribute('#lgPass', 'type') === 'text' && await page.inputValue('#lgPass') === 'secreto', 'el ojo muestra la contraseña escrita');
+  await page.shot('64-nube-ojo');
+  await page.click('.pw-eye');
+  ok(await page.getAttribute('#lgPass', 'type') === 'password', 'y la vuelve a ocultar');
+  await page.fill('#lgPass', '');
   await page.shot('60-nube-login');
 
   console.log('\n== Inicio de sesión ==');

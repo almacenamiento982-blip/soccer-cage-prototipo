@@ -1464,5 +1464,7 @@ const I18N = {
     'cloud.err.self': { es: 'No puedes quitarte el acceso a ti mismo.', en: 'You cannot remove your own access.' },
     'cloud.err.email': { es: 'Escribe un correo válido.', en: 'Enter a valid email.' },
     'cloud.err.notStaff': { es: 'Tu cuenta ya no tiene acceso.', en: 'Your account no longer has access.' },
+    'ui.showPassword': { es: 'Mostrar contraseña', en: 'Show password' },
+    'ui.hidePassword': { es: 'Ocultar contraseña', en: 'Hide password' },
   }
 };

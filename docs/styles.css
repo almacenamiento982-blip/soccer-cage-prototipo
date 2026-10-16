@@ -1929,3 +1929,15 @@ button.imp-opt { font: inherit; text-align: left; color: inherit; width: 100%; }
   .sync-chip { display: none; }
   .team-add .form-grid { grid-template-columns: 1fr !important; }
 }
+
+/* Contraseña con botón de ojo para ver lo escrito */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 46px; }
+.pw-eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 34px; border: 0; background: transparent; border-radius: var(--r-sm);
+  display: grid; place-items: center; color: var(--ink-500); cursor: pointer;
+}
+.pw-eye:hover { color: var(--ink-900); background: var(--ink-50); }
+.pw-eye:focus-visible { outline: 2px solid var(--gold-500); outline-offset: 1px; }
+.pw-eye .ico { width: 18px; height: 18px; }

@@ -234,6 +234,7 @@ const App = {
         <button class="btn btn-primary" id="lgGo">${I18N.t('cloud.loginBtn')}</button>
       </div>`, 'narrow');
 
+    UI.passwordEyes();
     const err = t => { const e = document.getElementById('lgErr'); e.textContent = t; e.classList.add('show'); };
     const go = async () => {
       const email = document.getElementById('lgEmail').value.trim(), pass = document.getElementById('lgPass').value;
@@ -296,6 +297,7 @@ const App = {
         <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
         <button class="btn btn-primary" id="pwGo">${I18N.t('cloud.savePass')}</button>
       </div>`, 'narrow');
+    UI.passwordEyes();
     document.getElementById('pwGo').onclick = async () => {
       const a = document.getElementById('pwNew').value, b = document.getElementById('pwNew2').value;
       const e = document.getElementById('pwErr');

@@ -191,7 +191,9 @@ const UI = {
       upload: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
       printer: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
       plus: '<path d="M12 5v14M5 12h14"/>',
-      x: '<path d="M18 6L6 18M6 6l12 12"/>'
+      x: '<path d="M18 6L6 18M6 6l12 12"/>',
+      eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+      eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><path d="M14.12 14.12a3 3 0 11-4.24-4.24"/><path d="M1 1l22 22"/>'
     }[name] || '';
     return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   },
@@ -361,6 +363,29 @@ const UI = {
       }
     }
     UI.closeModal();
+  },
+
+  /** Botón de ojo en cada contraseña del modal: mostrar u ocultar lo escrito. */
+  passwordEyes(root) {
+    (root || document.getElementById('modalBox')).querySelectorAll('input[type="password"]').forEach(inp => {
+      if (inp.parentElement.classList.contains('pw-wrap')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'pw-wrap';
+      inp.parentNode.insertBefore(wrap, inp);
+      wrap.appendChild(inp);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pw-eye';
+      const show = on => {
+        inp.type = on ? 'text' : 'password';
+        btn.innerHTML = UI.icon(on ? 'eyeOff' : 'eye');
+        btn.setAttribute('aria-label', I18N.t(on ? 'ui.hidePassword' : 'ui.showPassword'));
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      };
+      btn.onclick = () => { show(inp.type === 'password'); inp.focus({ preventScroll: true }); };
+      show(false);
+      wrap.appendChild(btn);
+    });
   },
 
   closeBtn() {
