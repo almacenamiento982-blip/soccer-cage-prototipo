@@ -61,6 +61,20 @@ const Store = {
       done.push('academias-solo-usps');
       changed = true;
     }
+    // Reunión 14-10: compras a proveedor y aviso de reposición por uniforme.
+    if (!done.includes('compras-proveedor')) {
+      this.state.purchases = this.state.purchases || [];
+      const st = this.state.settings;
+      if (st.reorderPointDefault == null) st.reorderPointDefault = 10;
+      if (st.stockAlertEmails == null) st.stockAlertEmails = 'inventario@soccercage.com';
+      done.push('compras-proveedor');
+      changed = true;
+    }
+    if (!done.includes('peso-envios')) {
+      if (!this.state.settings.parcel) this.state.settings.parcel = { weightOz: 2, length: 12, width: 10, height: 2 };
+      done.push('peso-envios');
+      changed = true;
+    }
     if (changed) this.save();
   },
 
@@ -142,16 +156,22 @@ const Store = {
       users:     clone(SEED.users),
       orders: [], customers: [], movements: [],
       carts: {}, currentStore: 'camps', session: null,
-      counters: { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100 },
+      counters: { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100, purchase: 0 },
       settings: {
         company: 'Soccer Cage', city: 'Miami, FL', currency: 'USD', lowStockGlobal: 4,
         // A quién llega el correo de cada pedido (quien prepara las órdenes).
         orderNotifyEmails: 'ordenes@soccercage.com',
         // Remitente de las etiquetas de envío.
-        shipFrom: { name: 'Soccer Cage', line: '', city: 'Miami', state: 'FL', zip: '' }
+        shipFrom: { name: 'Soccer Cage', line: '', city: 'Miami', state: 'FL', zip: '' },
+        // Reposición: aviso cuando a un uniforme le quedan estas unidades (todas las tallas).
+        reorderPointDefault: 10,
+        stockAlertEmails: 'inventario@soccercage.com',
+        // Empaque de los envíos: bolsa de envío estándar (pulgadas) y su peso vacío (onzas).
+        parcel: { weightOz: 2, length: 12, width: 10, height: 2 }
       },
+      purchases: [],
       outbox: [],
-      migrations: ['academias-solo-usps'],   // la demo nueva ya nace con estos ajustes
+      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios'],   // la demo nueva ya nace con estos ajustes
       currentUser: 'u1'
     };
     this._silent = true;
@@ -411,6 +431,13 @@ const Store = {
     };
 
     this.state.movements.unshift(mov);
+
+    // Aviso de reposición: solo en el momento en que el uniforme cruza su punto de alerta.
+    if (type === 'salida') {
+      const st = this.reorderState(product);
+      if (st.need && st.available + st.coming + qty > st.point) this.queueReorderEmail(product, st);
+    }
+
     this.save();
     return { ok: true, movement: mov };
   },
@@ -755,6 +782,24 @@ const Store = {
     return (this.state.outbox || []).find(m => m.orderId === orderId) || null;
   },
 
+  /* ---------- Peso del paquete ---------- */
+  itemWeightOz(p) {
+    if (!p) return 8;
+    if (this.isKit(p)) return this.kitParts(p).reduce((s, x) => s + this.itemWeightOz(x.product) * x.qty, 0);
+    return Number(p.weightOz) > 0 ? Number(p.weightOz) : (SEED.kindWeightOz[p.kind] || 8);
+  },
+
+  /** Paquete de un pedido: peso total (prendas + empaque) y medidas de la bolsa. */
+  orderParcel(o) {
+    const pk = this.settings.parcel || { weightOz: 2, length: 12, width: 10, height: 2 };
+    let oz = Number(pk.weightOz) || 0;
+    o.items.forEach(it => {
+      if (it.kind === 'kit' && it.components) it.components.forEach(c => { oz += this.itemWeightOz(this.product(c.productId)) * (c.qty || 1) * it.qty; });
+      else oz += this.itemWeightOz(this.product(it.productId)) * it.qty;
+    });
+    return { weightOz: Math.round(oz * 10) / 10, length: pk.length, width: pk.width, height: pk.height };
+  },
+
   /* ---------- Etiquetas de envío ----------
      Simulación del flujo que hará la API de envíos: crear la etiqueta,
      pagarla y dejar el número de seguimiento en el pedido. */
@@ -781,6 +826,178 @@ const Store = {
     });
     this.save();
     return { ok: true, done, skipped };
+  },
+
+  /* ============================================================
+     COMPRAS A PROVEEDOR — pedido → llegado → vendido → saldo
+     Un pedido a proveedor no toca el stock: solo deja la mercancía
+     "en camino". Al recibirla (toda o por partes) entra al
+     inventario con un movimiento de compra que lleva el número OC-….
+     ============================================================ */
+  get purchases() { return this.state.purchases || (this.state.purchases = []); },
+
+  purchase(id) { return this.purchases.find(x => x.id === id) || null; },
+
+  purchasePending(l) { return Math.max(0, l.qty - (l.received || 0)); },
+
+  /** Unidades pedidas y aún no recibidas de una variante (o de todo el producto). */
+  onOrder(variantId) {
+    let n = 0;
+    this.purchases.forEach(po => {
+      if (po.status === 'recibido' || po.status === 'cancelado') return;
+      po.lines.forEach(l => { if (l.variantId === variantId) n += this.purchasePending(l); });
+    });
+    return n;
+  },
+  productOnOrder(p) { return p.variants.reduce((s, v) => s + this.onOrder(v.id), 0); },
+
+  suppliers() {
+    return [...new Set(this.purchases.map(po => po.supplier).filter(Boolean))].sort();
+  },
+
+  createPurchase({ supplier, expected, note, lines }) {
+    supplier = String(supplier || '').trim();
+    if (!supplier) return { ok: false, error: I18N.t('err.poSupplier') };
+    const clean = [], seen = new Set();
+    for (const l of lines || []) {
+      const qty = Math.floor(Number(l.qty) || 0);
+      if (!qty) continue;
+      if (qty < 0 || qty > 100000) return { ok: false, error: I18N.t('err.qtyInvalid') };
+      const f = this.findVariant(l.variantId);
+      if (!f || this.isKit(f.product)) return { ok: false, error: I18N.t('err.variantNotFound') };
+      if (seen.has(l.variantId)) return { ok: false, error: I18N.t('err.poDupLine') };
+      seen.add(l.variantId);
+      clean.push({ variantId: f.variant.id, productId: f.product.id, sku: f.variant.sku, name: f.product.name,
+        size: f.variant.size, qty, received: 0, unitCost: round2(Number(l.unitCost != null ? l.unitCost : f.product.cost) || 0) });
+    }
+    if (!clean.length) return { ok: false, error: I18N.t('err.poEmpty') };
+    const po = {
+      id: 'po' + this.nextId('purchase'),
+      number: 'OC-' + String(this.state.counters.purchase).padStart(4, '0'),
+      supplier, expected: expected || '', note: String(note || '').trim(),
+      date: this.nowISO(), createdBy: this.user().name,
+      status: 'pedido', lines: clean, receipts: []
+    };
+    this.purchases.unshift(po);
+    this.save();
+    return { ok: true, purchase: po };
+  },
+
+  /** Recibe mercancía de un pedido. qtyByVariant: { variantId: unidades que llegaron ahora }. */
+  receivePurchase(id, qtyByVariant) {
+    const po = this.purchase(id);
+    if (!po) return { ok: false, error: I18N.t('err.notAvailable') };
+    if (po.status === 'recibido' || po.status === 'cancelado') return { ok: false, error: I18N.t('err.poClosed') };
+    const todo = [];
+    for (const l of po.lines) {
+      const n = Math.floor(Number(qtyByVariant[l.variantId]) || 0);
+      if (!n) continue;
+      if (n < 0 || n > this.purchasePending(l)) return { ok: false, error: I18N.t('err.poTooMany', { sku: l.sku, n: this.purchasePending(l) }) };
+      todo.push([l, n]);
+    }
+    if (!todo.length) return { ok: false, error: I18N.t('err.poNothing') };
+
+    const wasSilent = this._silent;
+    this._silent = true;   // una sola escritura para toda la recepción
+    const receipt = { date: this.nowISO(), user: this.user().name, lines: [] };
+    try {
+      todo.forEach(([l, n]) => {
+        const r = this.applyMovement({ variantId: l.variantId, type: 'entrada', qty: n, reason: 'purchase', ref: po.number });
+        if (r.ok) { l.received = (l.received || 0) + n; receipt.lines.push({ variantId: l.variantId, qty: n }); }
+      });
+    } finally { this._silent = wasSilent; }
+    po.receipts.push(receipt);
+    po.status = po.lines.every(l => this.purchasePending(l) === 0) ? 'recibido' : 'parcial';
+    this.save();
+    return { ok: true, purchase: po, units: receipt.lines.reduce((s, x) => s + x.qty, 0) };
+  },
+
+  /** Cancela lo que falta por llegar. Lo ya recibido se queda en el inventario. */
+  cancelPurchase(id) {
+    const po = this.purchase(id);
+    if (!po) return { ok: false, error: I18N.t('err.notAvailable') };
+    if (po.status === 'recibido' || po.status === 'cancelado') return { ok: false, error: I18N.t('err.poClosed') };
+    po.status = po.lines.some(l => l.received) ? 'recibido' : 'cancelado';
+    po.closedEarly = true;
+    po.closedAt = this.nowISO();
+    this.save();
+    return { ok: true, purchase: po };
+  },
+
+  /**
+   * Estado de cada uniforme: inicial, pedido, en camino, llegado, vendido, otros y saldo.
+   * Cuadra siempre: saldo = inicial + llegado − vendido + otros (otros = entregas
+   * de academia/ID Camp, conteos, mermas y correcciones).
+   */
+  uniformStages() {
+    const row = () => ({ initial: 0, ordered: 0, onOrder: 0, arrived: 0, sold: 0, other: 0, stock: 0 });
+    const byVariant = {};
+    const get = vid => byVariant[vid] || (byVariant[vid] = row());
+    this.state.movements.forEach(m => {
+      const r = get(m.variantId), s = m.type === 'entrada' ? m.qty : -m.qty;
+      if (m.reason === 'initial') r.initial += s;
+      else if (m.reason === 'purchase') r.arrived += s;
+      else if (m.reason === 'sale' || m.reason === 'sale_kit' || m.reason === 'return') r.sold -= s;
+      else r.other += s;
+    });
+    this.purchases.forEach(po => po.lines.forEach(l => {
+      const r = get(l.variantId);
+      r.ordered += po.status === 'cancelado' ? 0 : (po.closedEarly ? (l.received || 0) : l.qty);
+      if (po.status === 'pedido' || po.status === 'parcial') r.onOrder += this.purchasePending(l);
+    }));
+    return this.state.products.filter(p => !this.isKit(p) && p.active).map(p => {
+      const total = row();
+      const sizes = p.variants.map(v => {
+        const r = Object.assign(row(), byVariant[v.id] || {}, { stock: v.stock });
+        Object.keys(total).forEach(k => { total[k] += r[k]; });
+        return { v, ...r };
+      });
+      return { p, total, sizes };
+    });
+  },
+
+  /* ---------- Reposición: "hay que pedir más de este uniforme" ----------
+     Se mide por el total del uniforme (todas las tallas). Lo que ya está
+     pedido cuenta: si viene en camino, no se vuelve a avisar. */
+  reorderPoint(p) {
+    return p.reorderPoint != null && p.reorderPoint !== '' ? Number(p.reorderPoint) : Number(this.settings.reorderPointDefault || 0);
+  },
+
+  reorderState(p) {
+    const available = p.variants.reduce((s, v) => s + this.available(v), 0);
+    const coming = this.productOnOrder(p);
+    const point = this.reorderPoint(p);
+    const need = point > 0 && available + coming <= point;
+    return { available, coming, point, need, covered: point > 0 && available <= point && !need };
+  },
+
+  reorderList() {
+    return this.state.products.filter(p => p.active && !this.isKit(p))
+      .map(p => ({ p, ...this.reorderState(p) })).filter(x => x.need)
+      .sort((a, b) => a.available - b.available);
+  },
+
+  /** Cantidades sugeridas por talla para volver a un nivel cómodo (3 veces el punto de alerta). */
+  reorderSuggestion(p) {
+    const point = Math.max(this.reorderPoint(p), 1);
+    const perSize = Math.max((p.minStock || 0) * 3, Math.ceil(point * 3 / Math.max(p.variants.length, 1)));
+    return p.variants.map(v => ({ variantId: v.id, qty: Math.max(0, perSize - this.available(v) - this.onOrder(v.id)) }));
+  },
+
+  /** Correo de aviso cuando un uniforme cruza su punto de reposición. */
+  queueReorderEmail(p, st) {
+    const to = String(this.settings.stockAlertEmails || '').split(/[,;\s]+/).filter(Boolean);
+    if (!to.length) return;
+    const outbox = this.state.outbox || (this.state.outbox = []);
+    outbox.unshift({
+      id: 'e' + this.nextId('email'), kind: 'reorder', productId: p.id,
+      to, subject: I18N.t('mail.reorderSubject', { name: p.name, n: st.available }),
+      date: this.nowISO(), status: 'simulado'
+    });
+  },
+
+  lastReorderEmail(productId) {
+    return (this.state.outbox || []).find(m => m.kind === 'reorder' && m.productId === productId) || null;
   },
 
   /* ---------- Gestión de pedidos ---------- */
@@ -858,6 +1075,8 @@ const Store = {
     fields.price = round2(fields.price);
     fields.cost = round2(fields.cost || 0);
     fields.minStock = Math.floor(Number(fields.minStock) || 0);
+    fields.weightOz = Number(fields.weightOz) > 0 ? Math.round(Number(fields.weightOz) * 10) / 10 : null;
+    fields.reorderPoint = fields.reorderPoint == null || fields.reorderPoint === '' ? null : Math.max(0, Math.floor(Number(fields.reorderPoint) || 0));
     if (fields.components) fields.components = fields.components.map(c => ({ productId: c.productId, qty: Math.floor(Number(c.qty)) }));
 
     const skuFor = (base, size) => base + (size === 'U' ? '' : '-' + size);

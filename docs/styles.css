@@ -1869,3 +1869,37 @@ table.data tr.sub-row td { padding-top: 5px; padding-bottom: 5px; background: va
   .mail-row { flex-wrap: wrap; }
   .mail-body { padding: 18px 16px 20px; }
 }
+
+/* ============================================================
+   COMPRAS — pedidos a proveedor y estado por uniforme
+   ============================================================ */
+.po-bar { height: 6px; border-radius: var(--r-full); background: var(--ink-100); margin-top: 5px; overflow: hidden; }
+.po-bar span { display: block; height: 100%; background: var(--ok-600); border-radius: inherit; }
+.po-zero, .po-need { color: var(--danger-600); font-weight: 650; }
+.po-coming { color: var(--info-600); font-weight: 600; margin-top: 3px; }
+.po-stages td, .po-stages th { white-space: nowrap; }
+.po-row { cursor: pointer; }
+.po-row:hover td { background: var(--ink-50); }
+.po-row:focus-visible { outline: 2px solid var(--gold-500); outline-offset: -2px; }
+.po-stages .sub-row td { background: var(--surface-sunken); padding-top: 7px; padding-bottom: 7px; }
+.po-stages .sub-row td:first-child { padding-left: 34px; }
+
+.po-items { display: grid; gap: var(--s3); margin: var(--s2) 0 var(--s3); }
+.po-item { border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s3) var(--s4); background: var(--white); }
+.po-item-head { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s3); }
+.po-item-head .cell-flex { flex: 1; min-width: 0; }
+.po-item-cost { display: flex; flex-direction: column; gap: 2px; width: 110px; }
+.po-sizes { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.po-size { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 640; color: var(--ink-700); }
+.po-size small { font-weight: 500; color: var(--ink-400); font-size: 11px; }
+.input-sm { height: 34px; padding: 4px 8px; font-size: 14px; }
+.po-recv { width: 84px; text-align: right; margin-left: auto; }
+.po-add .select { width: 100%; }
+.po-foot-total { margin-right: auto; font-weight: 640; color: var(--ink-700); font-size: 14px; }
+
+@media (max-width: 640px) {
+  .po-item-head { flex-wrap: wrap; }
+  .po-item-cost { width: 100%; flex-direction: row; align-items: center; gap: 8px; }
+  .po-item-cost .input { width: 110px; }
+  .po-foot-total { width: 100%; margin-bottom: 4px; }
+}

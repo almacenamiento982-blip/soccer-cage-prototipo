@@ -49,6 +49,10 @@ SEED.brandPalette = ['#111111', '#e8174b', '#c8102e', '#1e40af', '#0f7b52', '#c9
 // Las etiquetas visibles salen de I18N ('cat.player', 'kind.jersey'…).
 SEED.categories = ['player', 'goalkeeper', 'accessories'];
 SEED.kinds = ['kit', 'jersey', 'short', 'socks', 'apparel', 'accessory'];
+
+/* Peso aproximado por prenda en onzas, para calcular la etiqueta de USPS.
+   Cada producto puede tener su propio peso; si no, se usa este. */
+SEED.kindWeightOz = { jersey: 6, short: 5, socks: 3, apparel: 14, accessory: 10 };
 SEED.lines = { camp: 'Summer Camp 2026', elite: 'Elite 2026-27', competitive: 'Competitive' };
 
 SEED.sizeScale = ['YXS', 'YS', 'YM', 'YL', 'S', 'M', 'L', 'XL', 'U'];
@@ -315,8 +319,22 @@ SEED.history = function (S) {
   S.state.currentUser = 'u1';
   at(2, 12, 0);
   S.applyMovement({ variantId: variant('camp-jersey', 'YS'), type: 'salida', qty: 2, reason: 'damage', ref: 'AJ-0001' });
+
+  // Compras a proveedor: una recibida completa, una a medias y una en camino.
+  const po = (supplier, pid, qtys, extra) => S.createPurchase(Object.assign({
+    supplier, lines: Object.entries(qtys).map(([size, qty]) => ({ variantId: variant(pid, size), qty }))
+  }, extra || {})).purchase;
+  const supplier = 'Proveedor de uniformes (demo)';
+  at(10, 10, 0);
+  const po1 = po(supplier, 'camp-jersey', { YXS: 10, YS: 20, YM: 25, YL: 20, S: 15, M: 10 }, { note: 'Temporada Summer Camp 2026' });
+  at(8, 14, 0);
+  S.receivePurchase(po1.id, Object.fromEntries(po1.lines.map(l => [l.variantId, l.qty])));
+  at(4, 9, 0);
+  const po2 = po(supplier, 'camp-socks', { S: 20, M: 24, L: 16 });
   at(1, 9, 20);
-  S.applyMovement({ variantId: variant('camp-socks', 'M'), type: 'entrada', qty: 24, reason: 'purchase', ref: 'OC-1042' });
+  S.receivePurchase(po2.id, { [variant('camp-socks', 'M')]: 24 });
+  at(1, 11, 0);
+  po(supplier, 'camp-short', { YS: 15, YM: 15, YL: 10, S: 10 }, { expected: S.dayKey(new Date(Date.now() + 6 * 864e5)) });
 
   // Daniel creó su cuenta pero aún no ha comprado.
   at(1, 20, 0);

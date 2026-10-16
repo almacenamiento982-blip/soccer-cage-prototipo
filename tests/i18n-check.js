@@ -33,6 +33,7 @@ const dyn = {
   'reason.': ['sale', 'sale_kit', 'initial', 'purchase', 'return', 'count', 'fix', 'damage', 'courtesy', 'loss', 'delivery_academy', 'delivery_clinic', 'delivery_undo'],
   'stock.': ['ok', 'bajo', 'agotado', 'inactivo'],
   'order.statusPickup.': ['enviado', 'completado'],
+  'adm.po.status.': ['pedido', 'parcial', 'recibido', 'cancelado'],
   'adm.orders.status.': ['pendiente', 'procesando', 'enviado', 'completado', 'cancelado'],
   'pay.status.': ['pagado', 'pendiente', 'fallido', 'reembolsado'],
   'fulfill.pickup.': ['camps', 'athletum', 'lasvegas', 'generic'],

@@ -237,14 +237,14 @@ async function run(browser, label, opts) {
   await page.evaluate(() => { UI.closeModal(); Shop.closeCart(); });
 
   // Textos cortados / desbordes en el panel en esta anchura
-  for (const p of ['dashboard', 'inventory', 'products', 'movements', 'deliveries', 'orders', 'shipments', 'customers', 'stores', 'alerts', 'reports', 'settings']) {
+  for (const p of ['dashboard', 'inventory', 'products', 'movements', 'purchases', 'deliveries', 'orders', 'shipments', 'customers', 'stores', 'alerts', 'reports', 'settings']) {
     await nav(p);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     if (over > 0) note('UX', 'panel/' + p, 'desborde horizontal', over);
     const empty = await page.evaluate(() => [...document.querySelectorAll('.page.active .kpi-value')].filter(e => !e.textContent.trim()).length);
     if (empty) note('UX', 'panel/' + p, 'indicadores vacíos', empty);
   }
-  okLine('panel', 'sin desbordes ni indicadores vacíos en las 12 secciones');
+  okLine('panel', 'sin desbordes ni indicadores vacíos en las 13 secciones');
 
   await ctx.close();
 }

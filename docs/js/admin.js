@@ -13,7 +13,8 @@ const Admin = {
     ord:  { q: '', raw: '', status: 'todos', store: 'todos' },
     cust: { q: '', raw: '' },
     del:  { q: '', raw: '', program: 'todos', status: 'todos' },
-    ship: { sel: [] }
+    ship: { sel: [] },
+    pur:  { q: '', raw: '', open: [] }
   },
   draft: null,
 
@@ -53,6 +54,7 @@ const Admin = {
     set('alertBadge', m.alertCount);
     set('deliveryBadge', m.deliveriesPending);
     set('shipBadge', Store.pendingShipments().length);
+    set('poBadge', Store.reorderList().length);
   },
 
   renderPage(page) {
@@ -362,6 +364,7 @@ const Admin = {
                   <td class="right">
                     <div style="font-weight:680;font-size:15px">${v.stock}</div>
                     ${UI.stockBar(v.stock, p.minStock)}
+                    ${(n => n ? `<div class="cell-sub po-coming">${I18N.t('adm.po.comingN', { n })}</div>` : '')(Store.onOrder(v.id))}
                   </td>
                   <td class="right muted">${p.minStock}</td>
                   <td>${UI.stockBadge(st)}</td>
@@ -818,9 +821,19 @@ const Admin = {
             <input class="input" id="pfCost" type="number" step="0.01" min="0" value="${p ? p.cost : ''}" placeholder="12.00">
           </div>
           <div class="field">
+            <label for="pfWeight">${I18N.t('adm.pf.weight')}</label>
+            <input class="input" id="pfWeight" type="number" step="0.1" min="0" value="${p && p.weightOz ? p.weightOz : ''}" placeholder="${SEED.kindWeightOz[(p && p.kind) || 'jersey'] || 8}">
+            <div class="hint">${I18N.t('adm.pf.weightHint')}</div>
+          </div>
+          <div class="field">
             <label for="pfMin">${I18N.t('adm.pf.min')}</label>
             <input class="input" id="pfMin" type="number" min="0" value="${p ? p.minStock : Store.settings.lowStockGlobal}">
             <div class="hint">${I18N.t('adm.pf.minHint')}</div>
+          </div>
+          <div class="field">
+            <label for="pfReorder">${I18N.t('adm.pf.reorder')}</label>
+            <input class="input" id="pfReorder" type="number" min="0" value="${p && p.reorderPoint != null ? p.reorderPoint : ''}" placeholder="${Store.settings.reorderPointDefault}">
+            <div class="hint">${I18N.t('adm.pf.reorderHint', { n: Store.settings.reorderPointDefault })}</div>
           </div>
           <div class="field">
             <label for="pfLine">${I18N.t('adm.pf.line')}</label>
@@ -1081,6 +1094,8 @@ const Admin = {
       description: val('pfDesc'),
       cost: d.kit ? 0 : (parseFloat(val('pfCost')) || 0),
       minStock: d.kit ? 0 : (parseInt(val('pfMin')) || 0),
+      reorderPoint: d.kit || val('pfReorder') === '' ? null : Math.max(0, parseInt(val('pfReorder')) || 0),
+      weightOz: d.kit ? null : (parseFloat(val('pfWeight')) || null),
       active: document.getElementById('pfActive').checked,
       featured: document.getElementById('pfFeat').checked,
       image: d.image,
@@ -1754,6 +1769,7 @@ const Admin = {
         <td><div class="cell-main">${UI.esc(c.name || '—')}</div><div class="cell-sub">${UI.esc(kitsOf(o).join(', '))}</div></td>
         <td class="tiny">${UI.esc([a.line, a.city, (a.state || '') + ' ' + (a.zip || '')].join(', '))}</td>
         <td class="right">${o.items.reduce((s, i) => s + i.qty, 0)}</td>
+        <td class="right nowrap">${UI.weight(Store.orderParcel(o).weightOz)}</td>
         <td class="right mono">${UI.money(o.shipping)}</td>
       </tr>`;
     };
@@ -1784,7 +1800,7 @@ const Admin = {
         ${toShip.length ? `
         <div class="table-wrap">
           <table class="data">
-            <thead><tr><th style="width:36px"></th><th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.ship.colWho')}</th><th>${I18N.t('adm.ship.colAddress')}</th><th class="right">${I18N.t('adm.orders.colItems')}</th><th class="right">${I18N.t('adm.ship.colCharged')}</th></tr></thead>
+            <thead><tr><th style="width:36px"></th><th>${I18N.t('adm.orders.colOrder')}</th><th>${I18N.t('adm.ship.colWho')}</th><th>${I18N.t('adm.ship.colAddress')}</th><th class="right">${I18N.t('adm.orders.colItems')}</th><th class="right">${I18N.t('adm.ship.colWeight')}</th><th class="right">${I18N.t('adm.ship.colCharged')}</th></tr></thead>
             <tbody>${toShip.map(row).join('')}</tbody>
           </table>
         </div>` : UI.empty(I18N.t('adm.ship.emptyTitle'), I18N.t('adm.ship.emptyBody'))}
@@ -1862,7 +1878,7 @@ const Admin = {
     const label = o => {
       const c = this.customerOf(o) || {}, a = o.address || {};
       return `<section class="lbl">
-        <div class="hd"><b>USPS GROUND ADVANTAGE</b><span>${UI.esc(o.number)}</span></div>
+        <div class="hd"><b>USPS GROUND ADVANTAGE</b><span>${UI.esc(o.number)} · ${UI.weight(Store.orderParcel(o).weightOz)}</span></div>
         <div class="from">${UI.esc(from.name || Store.settings.company)}<br>${UI.esc(from.line || '')}<br>${UI.esc([from.city, from.state, from.zip].filter(Boolean).join(' '))}</div>
         <div class="to"><small>SHIP TO</small><br><b>${UI.esc(c.name || '')}</b><br>${UI.esc(a.line || '')}<br>${UI.esc(a.city || '')}, ${UI.esc(a.state || '')} ${UI.esc(a.zip || '')}</div>
         <div class="trk"><div class="bars"></div>${UI.esc(o.label.tracking)}</div>
@@ -1879,6 +1895,337 @@ const Admin = {
       .ft{font-size:9.5px;color:#333;border-top:1px solid #000;padding-top:4px}</style></head>
       <body>${orders.map(label).join('')}<script>window.onload=function(){window.print()}<\/script></body></html>`);
     w.document.close();
+  },
+
+  /* ============================================================
+     COMPRAS — pedidos a proveedor y estado de cada uniforme
+     Reunión 14-10: "pedí 100, llegaron 100, vendí 40, quedan 60",
+     y que avise cuando hay que pedir más.
+     ============================================================ */
+  poStatusBadge(po) {
+    const cls = { pedido: 'badge-info', parcial: 'badge-warn', recibido: 'badge-ok', cancelado: 'badge-neutral' }[po.status] || 'badge-neutral';
+    return `<span class="badge ${cls}"><span class="dot"></span>${I18N.t('adm.po.status.' + po.status)}</span>`;
+  },
+
+  purchasesHTML() {
+    const f = this.f.pur;
+    const pos = Store.purchases;
+    const open = pos.filter(po => po.status === 'pedido' || po.status === 'parcial');
+    const coming = open.reduce((s, po) => s + po.lines.reduce((a, l) => a + Store.purchasePending(l), 0), 0);
+    const comingValue = open.reduce((s, po) => s + po.lines.reduce((a, l) => a + Store.purchasePending(l) * (l.unitCost || 0), 0), 0);
+    const need = Store.reorderList();
+    const q = f.q.trim().toLowerCase();
+    const stages = Store.uniformStages().filter(x => !q || x.p.name.toLowerCase().includes(q) || x.p.sku.toLowerCase().includes(q));
+    const shown = stages.slice(0, 80);
+    const n = v => v ? UI.num(v) : '<span class="muted">0</span>';
+    const signed = v => v ? (v > 0 ? '+' : '−') + UI.num(Math.abs(v)) : '<span class="muted">0</span>';
+
+    return this.head(I18N.t('adm.po.title'), I18N.t('adm.po.sub'),
+      `<button class="btn btn-primary btn-sm" id="poNew">${UI.icon('plus')} ${I18N.t('adm.po.newBtn')}</button>`) + `
+    <div class="kpi-grid">
+      <div class="kpi kpi-principal ${need.length ? 'kpi-alerta' : ''}"><div class="kpi-label">${I18N.t('adm.po.kpiNeed')}</div><div class="kpi-value">${need.length}</div><div class="kpi-foot">${I18N.t('adm.po.kpiNeedFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.po.kpiOpen')}</div><div class="kpi-value">${open.length}</div><div class="kpi-foot">${I18N.t('adm.po.kpiOpenFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.po.kpiComing')}</div><div class="kpi-value">${UI.num(coming)}</div><div class="kpi-foot">${I18N.t('adm.po.kpiComingFoot')}</div></div>
+      <div class="kpi"><div class="kpi-label">${I18N.t('adm.po.kpiValue')}</div><div class="kpi-value">${UI.money0(comingValue)}</div><div class="kpi-foot">${I18N.t('adm.po.kpiValueFoot')}</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--s5)" id="poNeedCard">
+      <div class="card-head">
+        <div><h2>${I18N.t('adm.po.needTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.po.needSub', { to: UI.esc(Store.settings.stockAlertEmails || '—') })}</p></div>
+        ${need.length > 1 ? `<button class="btn btn-sm" id="poNeedAll">${I18N.t('adm.po.orderAll', { n: need.length })}</button>` : ''}
+      </div>
+      <div class="card-body flush">
+        ${need.length ? `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>${I18N.t('adm.po.colUniform')}</th><th class="right">${I18N.t('adm.po.colLeft')}</th><th class="right">${I18N.t('adm.po.colComing')}</th><th class="right">${I18N.t('adm.po.colPoint')}</th><th>${I18N.t('adm.po.colNotice')}</th><th class="right"></th></tr></thead>
+            <tbody>${need.slice(0, 40).map(x => {
+              const mail = Store.lastReorderEmail(x.p.id);
+              return `<tr>
+                <td><div class="cell-flex">${UI.thumb(x.p)}<div><div class="cell-main">${UI.esc(x.p.name)}</div><div class="cell-sub mono">${UI.esc(x.p.sku)}</div></div></div></td>
+                <td class="right"><b class="${x.available ? '' : 'po-zero'}">${UI.num(x.available)}</b></td>
+                <td class="right">${n(x.coming)}</td>
+                <td class="right muted">${x.point}</td>
+                <td class="tiny">${mail ? `${UI.icon('mail')} ${I18N.t('adm.po.mailed', { date: UI.date(mail.date) })}` : '<span class="muted">—</span>'}</td>
+                <td class="right"><button class="btn btn-sm btn-primary" data-po-order="${x.p.id}">${I18N.t('adm.po.orderBtn')}</button></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>` : UI.empty(I18N.t('adm.po.needEmptyTitle'), I18N.t('adm.po.needEmptyBody'))}
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--s5)">
+      <div class="card-head"><div><h2>${I18N.t('adm.po.listTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.po.listSub')}</p></div></div>
+      <div class="card-body flush">
+        ${pos.length ? `
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>${I18N.t('adm.po.colNumber')}</th><th>${I18N.t('adm.po.colSupplier')}</th><th>${I18N.t('adm.po.colContent')}</th><th>${I18N.t('adm.po.colProgress')}</th><th>${I18N.t('adm.po.colStatus')}</th><th class="right"></th></tr></thead>
+            <tbody>${pos.slice(0, 50).map(po => {
+              const ordered = po.lines.reduce((s, l) => s + l.qty, 0), got = po.lines.reduce((s, l) => s + (l.received || 0), 0);
+              const names = [...new Set(po.lines.map(l => l.name))];
+              const pct = ordered ? Math.round(got / ordered * 100) : 0;
+              return `<tr>
+                <td><div class="cell-main mono">${po.number}</div><div class="cell-sub">${UI.date(po.date)}${po.expected ? ' · ' + I18N.t('adm.po.expectedShort', { date: UI.date(po.expected + 'T12:00:00') }) : ''}</div></td>
+                <td>${UI.esc(po.supplier)}</td>
+                <td class="tiny">${UI.esc(names.slice(0, 2).join(', '))}${names.length > 2 ? ' ' + I18N.t('adm.po.more', { n: names.length - 2 }) : ''}</td>
+                <td style="min-width:140px"><div class="tiny">${I18N.t('adm.po.progress', { got: UI.num(got), of: UI.num(ordered) })}</div><div class="po-bar"><span style="width:${pct}%"></span></div></td>
+                <td>${this.poStatusBadge(po)}</td>
+                <td class="right nowrap">${po.status === 'pedido' || po.status === 'parcial'
+                  ? `<button class="btn btn-sm btn-primary" data-po-receive="${po.id}">${I18N.t('adm.po.receiveBtn')}</button>`
+                  : `<button class="btn btn-sm btn-ghost" data-po-receive="${po.id}">${I18N.t('adm.po.viewBtn')}</button>`}</td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>` : UI.empty(I18N.t('adm.po.listEmptyTitle'), I18N.t('adm.po.listEmptyBody'))}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>${I18N.t('adm.po.stagesTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.po.stagesSub')}</p></div></div>
+      <div class="filter-bar">${this.searchBox('poQ', f, I18N.t('adm.inv.searchPlaceholder'))}</div>
+      <div class="card-body flush">
+        <div class="table-wrap">
+          <table class="data po-stages">
+            <thead><tr>
+              <th>${I18N.t('adm.po.colUniform')}</th>
+              <th class="right">${I18N.t('adm.po.stInitial')}</th><th class="right">${I18N.t('adm.po.stOrdered')}</th><th class="right">${I18N.t('adm.po.stArrived')}</th>
+              <th class="right">${I18N.t('adm.po.stComing')}</th><th class="right">${I18N.t('adm.po.stSold')}</th><th class="right">${I18N.t('adm.po.stOther')}</th><th class="right">${I18N.t('adm.po.stStock')}</th>
+            </tr></thead>
+            <tbody>${shown.map(x => {
+              const t = x.total, isOpen = f.open.includes(x.p.id), st = Store.reorderState(x.p);
+              return `<tr class="po-row" data-po-toggle="${x.p.id}" tabindex="0" aria-expanded="${isOpen}">
+                <td><div class="cell-main">${isOpen ? '▾' : '▸'} ${UI.esc(x.p.name)}</div><div class="cell-sub">${x.p.variants.length === 1 ? UI.esc(UI.sizeLabel(x.p.variants[0].size)) : I18N.t('adm.po.sizesN', { n: x.p.variants.length })}${st.need ? ` · <span class="po-need">${I18N.t('adm.po.needShort')}</span>` : st.covered ? ` · ${I18N.t('adm.po.coveredShort')}` : ''}</div></td>
+                <td class="right">${n(t.initial)}</td><td class="right">${n(t.ordered)}</td><td class="right">${n(t.arrived)}</td>
+                <td class="right">${n(t.onOrder)}</td><td class="right">${n(t.sold)}</td><td class="right">${signed(t.other)}</td>
+                <td class="right"><b>${UI.num(t.stock)}</b></td>
+              </tr>${isOpen ? x.sizes.map(s => `<tr class="sub-row">
+                <td class="tiny">${I18N.t('shop.size')} <b>${UI.esc(UI.sizeLabel(s.v.size))}</b> <span class="mono muted">${UI.esc(s.v.sku)}</span></td>
+                <td class="right tiny">${n(s.initial)}</td><td class="right tiny">${n(s.ordered)}</td><td class="right tiny">${n(s.arrived)}</td>
+                <td class="right tiny">${n(s.onOrder)}</td><td class="right tiny">${n(s.sold)}</td><td class="right tiny">${signed(s.other)}</td>
+                <td class="right tiny"><b>${UI.num(s.stock)}</b></td>
+              </tr>`).join('') : ''}`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+        ${stages.length > shown.length ? `<p class="muted tiny" style="padding:12px 16px">${I18N.t('adm.po.showing', { n: shown.length, total: stages.length })}</p>` : ''}
+        ${stages.length ? '' : UI.empty(I18N.t('adm.inv.emptyTitle'), I18N.t('adm.inv.emptyBody'))}
+      </div>
+    </div>`;
+  },
+
+  purchasesBind() {
+    const f = this.f.pur;
+    this.bindSearch('poQ', f, 'purchases');
+    document.getElementById('poNew').onclick = () => this.purchaseForm();
+    document.querySelectorAll('[data-po-order]').forEach(b => b.onclick = () => this.purchaseForm([b.dataset.poOrder]));
+    const all = document.getElementById('poNeedAll');
+    if (all) all.onclick = () => this.purchaseForm(Store.reorderList().map(x => x.p.id));
+    document.querySelectorAll('[data-po-receive]').forEach(b => b.onclick = () => this.receiveForm(b.dataset.poReceive));
+    document.querySelectorAll('[data-po-toggle]').forEach(r => {
+      const toggle = () => {
+        const id = r.dataset.poToggle;
+        f.open = f.open.includes(id) ? f.open.filter(x => x !== id) : f.open.concat(id);
+        this.renderPage('purchases');
+        const again = document.querySelector(`[data-po-toggle="${id}"]`);
+        if (again) again.focus({ preventScroll: true });
+      };
+      r.onclick = toggle;
+      r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } };
+    });
+  },
+
+  /** Nuevo pedido a proveedor. productIds: uniformes que llegan precargados con la cantidad sugerida. */
+  purchaseForm(productIds) {
+    const d = this.poDraft = { supplier: '', expected: '', note: '', items: [] };
+    (productIds || []).forEach(id => {
+      const p = Store.product(id);
+      if (!p) return;
+      const qty = {};
+      Store.reorderSuggestion(p).forEach(s => { if (s.qty) qty[s.variantId] = s.qty; });
+      d.items.push({ productId: id, unitCost: p.cost, qty });
+    });
+    UI.modal(this.purchaseFormHTML(), 'wide');
+    this.purchaseFormBind();
+  },
+
+  poTotals() {
+    const d = this.poDraft;
+    let units = 0, cost = 0;
+    d.items.forEach(it => Object.values(it.qty).forEach(q => { const n = Math.max(0, parseInt(q) || 0); units += n; cost += n * (Number(it.unitCost) || 0); }));
+    return { units, cost };
+  },
+
+  purchaseFormHTML() {
+    const d = this.poDraft;
+    const used = new Set(d.items.map(i => i.productId));
+    const options = Store.products.filter(p => p.active && !Store.isKit(p) && !used.has(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+    const t = this.poTotals();
+    return `
+      <div class="modal-head">
+        <div><h2>${I18N.t('adm.po.formTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('adm.po.formSub')}</p></div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field">
+            <label for="poSupplier">${I18N.t('adm.po.supplier')} <span class="req">*</span></label>
+            <input class="input" id="poSupplier" list="poSuppliers" value="${UI.esc(d.supplier)}" data-autofocus autocomplete="off" placeholder="${I18N.t('adm.po.supplierPh')}">
+            <datalist id="poSuppliers">${Store.suppliers().map(s => `<option value="${UI.esc(s)}">`).join('')}</datalist>
+            <div class="err-msg" id="errPoSupplier">${I18N.t('err.poSupplier')}</div>
+          </div>
+          <div class="field">
+            <label for="poExpected">${I18N.t('adm.po.expected')}</label>
+            <input class="input" id="poExpected" type="date" value="${UI.esc(d.expected)}">
+          </div>
+          <div class="field span-2">
+            <label for="poNote">${I18N.t('adm.po.note')}</label>
+            <input class="input" id="poNote" value="${UI.esc(d.note)}" placeholder="${I18N.t('adm.po.notePh')}">
+          </div>
+        </div>
+
+        <div class="po-items">
+          ${d.items.map((it, idx) => {
+            const p = Store.product(it.productId);
+            const sub = p.variants.reduce((s, v) => s + (parseInt(it.qty[v.id]) || 0), 0);
+            return `
+            <div class="po-item">
+              <div class="po-item-head">
+                <div class="cell-flex">${UI.thumb(p)}<div><div class="cell-main">${UI.esc(p.name)}</div><div class="cell-sub">${I18N.t('adm.po.itemNow', { n: Store.productStock(p), coming: Store.productOnOrder(p) })}</div></div></div>
+                <div class="po-item-cost">
+                  <label for="poCost${idx}" class="tiny muted">${I18N.t('adm.po.unitCost')}</label>
+                  <input class="input input-sm" id="poCost${idx}" data-po-cost="${idx}" type="number" min="0" step="0.01" value="${UI.esc(it.unitCost)}">
+                </div>
+                <button class="icon-btn" data-po-remove="${idx}" aria-label="${I18N.t('adm.po.remove', { name: UI.esc(p.name) })}">${UI.icon('x')}</button>
+              </div>
+              <div class="po-sizes">
+                ${p.variants.map(v => `
+                  <label class="po-size">
+                    <span>${UI.esc(UI.sizeLabel(v.size))}</span>
+                    <input class="input input-sm" type="number" min="0" step="1" inputmode="numeric" data-po-qty="${idx}|${v.id}" value="${it.qty[v.id] || ''}" placeholder="0" aria-label="${UI.esc(p.name)} ${UI.esc(UI.sizeLabel(v.size))}">
+                    <small>${I18N.t('adm.po.has', { n: v.stock })}</small>
+                  </label>`).join('')}
+              </div>
+              <div class="tiny muted" style="margin-top:6px">${I18N.t('adm.po.itemTotal', { n: sub })}</div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <div class="po-add">
+          <select class="select" id="poPick" aria-label="${I18N.t('adm.po.addProduct')}">
+            <option value="">${I18N.t('adm.po.addProduct')}</option>
+            ${options.map(p => `<option value="${p.id}">${UI.esc(p.name)} · ${UI.esc(p.sku)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="err-msg" id="poErr"></div>
+      </div>
+      <div class="modal-foot">
+        <div class="po-foot-total">${I18N.t('adm.po.total', { n: UI.num(t.units), cost: UI.money(t.cost) })}</div>
+        <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.cancel')}</button>
+        <button class="btn btn-primary" id="poSave" ${t.units ? '' : 'disabled'}>${I18N.t('adm.po.save')}</button>
+      </div>`;
+  },
+
+  purchaseFormBind() {
+    const d = this.poDraft;
+    const rerender = () => { UI.rerenderModal(this.purchaseFormHTML()); this.purchaseFormBind(); };
+    const val = id => document.getElementById(id).value;
+    ['poSupplier', 'poExpected', 'poNote'].forEach(id => document.getElementById(id).oninput = () => {
+      d[{ poSupplier: 'supplier', poExpected: 'expected', poNote: 'note' }[id]] = val(id);
+      if (id === 'poSupplier' && val(id).trim()) document.getElementById('errPoSupplier').classList.remove('show');
+    });
+    document.querySelectorAll('[data-po-qty]').forEach(inp => inp.onchange = () => {
+      const [idx, vid] = inp.dataset.poQty.split('|');
+      const n = Math.max(0, parseInt(inp.value) || 0);
+      if (n) d.items[idx].qty[vid] = n; else delete d.items[idx].qty[vid];
+      rerender();
+    });
+    document.querySelectorAll('[data-po-cost]').forEach(inp => inp.onchange = () => {
+      d.items[inp.dataset.poCost].unitCost = Math.max(0, parseFloat(inp.value) || 0);
+      rerender();
+    });
+    document.querySelectorAll('[data-po-remove]').forEach(b => b.onclick = () => { d.items.splice(Number(b.dataset.poRemove), 1); rerender(); });
+    document.getElementById('poPick').onchange = e => {
+      const p = Store.product(e.target.value);
+      if (!p) return;
+      d.items.push({ productId: p.id, unitCost: p.cost, qty: {} });
+      rerender();
+      const first = document.querySelector(`[data-po-qty^="${d.items.length - 1}|"]`);
+      if (first) first.focus();
+    };
+    document.getElementById('poSave').onclick = () => {
+      if (!d.supplier.trim()) {
+        document.getElementById('errPoSupplier').classList.add('show');
+        document.getElementById('poSupplier').focus();
+        return;
+      }
+      const lines = [];
+      d.items.forEach(it => Object.entries(it.qty).forEach(([variantId, qty]) => lines.push({ variantId, qty, unitCost: it.unitCost })));
+      const r = Store.createPurchase({ supplier: d.supplier, expected: d.expected, note: d.note, lines });
+      if (!r.ok) { const e = document.getElementById('poErr'); e.textContent = r.error; e.classList.add('show'); return; }
+      UI.closeModal();
+      this.go('purchases');
+      UI.toast('ok', I18N.t('adm.po.createdTitle', { number: r.purchase.number }), I18N.t('adm.po.createdBody', { n: this.poTotals().units, supplier: r.purchase.supplier }));
+    };
+  },
+
+  /** Registrar la llegada de un pedido (toda o una parte) y ver su historial. */
+  receiveForm(id) {
+    const po = Store.purchase(id);
+    if (!po) return;
+    const isOpen = po.status === 'pedido' || po.status === 'parcial';
+    UI.modal(`
+      <div class="modal-head">
+        <div><h2>${po.number} · ${UI.esc(po.supplier)}</h2><p class="muted tiny" style="margin-top:2px">${UI.date(po.date, true)} · ${UI.esc(po.createdBy)}${po.expected ? ' · ' + I18N.t('adm.po.expectedShort', { date: UI.date(po.expected + 'T12:00:00') }) : ''}</p></div>
+        ${UI.closeBtn()}
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:14px">${this.poStatusBadge(po)}${po.note ? ` <span class="muted tiny">· ${UI.esc(po.note)}</span>` : ''}</div>
+        ${isOpen ? `<p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:12px">${I18N.t('adm.po.receiveIntro')}</p>` : ''}
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>${I18N.t('adm.inv.colProductVariant')}</th><th class="right">${I18N.t('adm.po.stOrdered')}</th><th class="right">${I18N.t('adm.po.stArrived')}</th><th class="right">${I18N.t('adm.po.missing')}</th>${isOpen ? `<th class="right">${I18N.t('adm.po.arrivesNow')}</th>` : ''}</tr></thead>
+            <tbody>${po.lines.map(l => {
+              const pend = Store.purchasePending(l);
+              return `<tr>
+                <td><div class="cell-main">${UI.esc(l.name)}</div><div class="cell-sub">${I18N.t('shop.size')} <b>${UI.esc(UI.sizeLabel(l.size))}</b> · <span class="mono">${UI.esc(l.sku)}</span></div></td>
+                <td class="right">${l.qty}</td><td class="right">${l.received || 0}</td><td class="right">${pend ? `<b>${pend}</b>` : '<span class="muted">0</span>'}</td>
+                ${isOpen ? `<td class="right"><input class="input input-sm po-recv" type="number" min="0" max="${pend}" step="1" inputmode="numeric" data-recv="${l.variantId}" value="${pend}" ${pend ? '' : 'disabled'} aria-label="${UI.esc(l.name)} ${UI.esc(UI.sizeLabel(l.size))}"></td>` : ''}
+              </tr>`;
+            }).join('')}</tbody>
+          </table>
+        </div>
+        <div class="err-msg" id="rcErr"></div>
+        ${po.receipts.length ? `
+        <h3 style="margin:20px 0 8px">${I18N.t('adm.po.history')}</h3>
+        ${po.receipts.map(r => `<div class="kv"><span class="k">${UI.date(r.date, true)} · ${UI.esc(r.user)}</span><span class="v">${I18N.t('adm.po.units', { n: r.lines.reduce((s, x) => s + x.qty, 0) })}</span></div>`).join('')}` : ''}
+        ${po.closedEarly ? `<p class="muted tiny" style="margin-top:10px">${I18N.t('adm.po.closedEarly', { date: UI.date(po.closedAt, true) })}</p>` : ''}
+      </div>
+      <div class="modal-foot">
+        ${isOpen ? `<button class="btn btn-danger btn-ghost" id="rcCancel">${I18N.t(po.status === 'parcial' ? 'adm.po.closeRest' : 'adm.po.cancelBtn')}</button>` : ''}
+        <span style="flex:1"></span>
+        <button class="btn" onclick="UI.closeModal()">${I18N.t(isOpen ? 'ui.cancel' : 'ui.close')}</button>
+        ${isOpen ? `<button class="btn btn-primary" id="rcSave">${I18N.t('adm.po.receiveSave')}</button>` : ''}
+      </div>`, 'wide');
+    if (!isOpen) return;
+
+    document.getElementById('rcSave').onclick = () => {
+      const q = {};
+      document.querySelectorAll('[data-recv]').forEach(i => { q[i.dataset.recv] = i.value; });
+      const r = Store.receivePurchase(id, q);
+      if (!r.ok) { const e = document.getElementById('rcErr'); e.textContent = r.error; e.classList.add('show'); return; }
+      UI.closeModal();
+      App.refreshAll();
+      UI.toast('ok', I18N.t('adm.po.receivedTitle', { number: po.number }), I18N.t(r.purchase.status === 'recibido' ? 'adm.po.receivedAll' : 'adm.po.receivedPart', { n: r.units }));
+    };
+    document.getElementById('rcCancel').onclick = () => {
+      UI.confirm(I18N.t(po.status === 'parcial' ? 'adm.po.closeRestQ' : 'adm.po.cancelQ', { number: po.number }), I18N.t('adm.po.cancelBody'), () => {
+        Store.cancelPurchase(id);
+        App.refreshAll();
+        UI.toast('info', I18N.t('adm.po.cancelledTitle', { number: po.number }), I18N.t('adm.po.cancelledBody'));
+      }, true);
+    };
   },
 
   /* ============================================================
@@ -2307,49 +2654,12 @@ const Admin = {
     document.querySelectorAll('[data-restock]').forEach(b =>
       b.onclick = () => this.movementForm(b.dataset.restock, 'entrada'));
 
+    // Abre un pedido a proveedor con los uniformes que están bajos o agotados.
     document.getElementById('alertOrder').onclick = () => {
       const m = Store.metrics();
-      const items = [...m.outItems, ...m.lowItems];
-      if (!items.length) { UI.toast('info', I18N.t('adm.alerts.nothingToRestock'), I18N.t('adm.alerts.nothingToRestockBody')); return; }
-      const need = (p, v) => Math.max(p.minStock * 2 - v.stock, p.minStock, 1);
-      const lines = items.map(({ p, v }) => ({ sku: v.sku, name: p.name, size: v.size, need: need(p, v), cost: need(p, v) * p.cost }));
-      const total = lines.reduce((s, l) => s + l.cost, 0);
-
-      UI.modal(`
-        <div class="modal-head"><h2>${I18N.t('adm.alerts.proposalTitle')}</h2>${UI.closeBtn()}</div>
-        <div class="modal-body">
-          <p class="muted" style="font-size:13.5px;margin-bottom:16px">${I18N.t('adm.alerts.proposalExplain')}</p>
-          <div class="table-wrap" style="border:1px solid var(--border);border-radius:var(--r-md)">
-            <table class="data">
-              <thead><tr><th>${I18N.t('adm.alerts.colSku')}</th><th>${I18N.t('adm.alerts.colProduct')}</th><th class="right">${I18N.t('adm.alerts.colUnits')}</th><th class="right">${I18N.t('adm.alerts.colEstCost')}</th></tr></thead>
-              <tbody>
-                ${lines.map(l => `<tr>
-                  <td class="mono tiny">${UI.esc(l.sku)}</td>
-                  <td><div class="cell-main">${UI.esc(l.name)}</div><div class="cell-sub">${I18N.t('shop.size')} ${UI.esc(UI.sizeLabel(l.size))}</div></td>
-                  <td class="right"><strong>${l.need}</strong></td>
-                  <td class="right mono">${UI.money(l.cost)}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div class="sum-row total" style="margin-top:14px"><span>${I18N.t('adm.alerts.estInvestment')}</span><span>${UI.money(total)}</span></div>
-        </div>
-        <div class="modal-foot">
-          <button class="btn" onclick="UI.closeModal()">${I18N.t('ui.close')}</button>
-          <button class="btn btn-primary" id="opConfirm">${I18N.t('adm.alerts.logAsIn')}</button>
-        </div>`, 'wide');
-
-      document.getElementById('opConfirm').onclick = () => {
-        const ref = 'OC-' + Math.floor(1000 + Math.random() * 9000);
-        let n = 0;
-        items.forEach(({ p, v }) => {
-          const r = Store.applyMovement({ variantId: v.id, type: 'entrada', qty: need(p, v), reason: 'purchase', ref });
-          if (r.ok) n++;
-        });
-        UI.closeModal();
-        App.refreshAll();
-        UI.toast('ok', I18N.t('adm.alerts.producedTitle'), I18N.t('adm.alerts.producedBody', { n, ref }));
-      };
+      const ids = [...new Set([...m.outItems, ...m.lowItems].map(x => x.p.id))];
+      if (!ids.length) { UI.toast('info', I18N.t('adm.alerts.nothingToRestock'), I18N.t('adm.alerts.nothingToRestockBody')); return; }
+      this.purchaseForm(ids);
     };
   },
 
@@ -2530,6 +2840,18 @@ const Admin = {
             <div class="field"><label for="stFromZip">${I18N.t('checkout.zip')}</label><input class="input" id="stFromZip" inputmode="numeric" maxlength="10" value="${UI.esc((s.shipFrom || {}).zip || '')}"></div>
           </div>
           <div class="hint" style="margin-bottom:14px">${I18N.t('adm.settings.shipFromHint')}</div>
+          <div class="form-grid tight" style="grid-template-columns:1fr 2fr">
+            <div class="field">
+              <label for="stReorder">${I18N.t('adm.settings.reorderDefault')}</label>
+              <input class="input" id="stReorder" type="number" min="0" value="${s.reorderPointDefault == null ? 10 : s.reorderPointDefault}">
+            </div>
+            <div class="field">
+              <label for="stStockMail">${I18N.t('adm.settings.stockAlertEmails')}</label>
+              <input class="input" id="stStockMail" type="text" inputmode="email" value="${UI.esc(s.stockAlertEmails || '')}">
+              <div class="err-msg" id="errStockMail"></div>
+            </div>
+          </div>
+          <div class="hint" style="margin:-6px 0 14px">${I18N.t('adm.settings.reorderHint')}</div>
           <button class="btn btn-primary" id="stOpsSave">${I18N.t('adm.settings.saveBtn')}</button>
         </div>
       </div>
@@ -2607,6 +2929,18 @@ const Admin = {
         return;
       }
       err.classList.remove('show');
+      const stockList = document.getElementById('stStockMail').value.trim().split(/[,;\s]+/).filter(Boolean);
+      const badStock = stockList.filter(x => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+      const err2 = document.getElementById('errStockMail');
+      if (badStock.length) {
+        err2.textContent = I18N.t('adm.settings.notifyBad', { list: badStock.join(', ') });
+        err2.classList.add('show');
+        document.getElementById('stStockMail').focus();
+        return;
+      }
+      err2.classList.remove('show');
+      s.stockAlertEmails = stockList.join(', ');
+      s.reorderPointDefault = Math.max(0, parseInt(document.getElementById('stReorder').value) || 0);
       s.orderNotifyEmails = list.join(', ');
       const v = id => document.getElementById(id).value.trim();
       s.shipFrom = { name: v('stFromName'), line: v('stFromLine'), city: v('stFromCity'), state: v('stFromState').toUpperCase(), zip: v('stFromZip') };

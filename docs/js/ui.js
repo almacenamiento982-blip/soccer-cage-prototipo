@@ -18,6 +18,14 @@ const UI = {
 
   num(n) { return (Number(n) || 0).toLocaleString('en-US'); },
 
+  /** Peso legible: onzas hasta 1 libra, luego libras con onzas. */
+  weight(oz) {
+    const n = Math.round((Number(oz) || 0) * 10) / 10;
+    if (n < 16) return n + ' oz';
+    const lb = Math.floor(n / 16), rest = Math.round((n - lb * 16) * 10) / 10;
+    return lb + ' lb' + (rest ? ' ' + rest + ' oz' : '');
+  },
+
   pct(rate) {
     const v = (Number(rate) || 0) * 100;
     return (Number.isInteger(v) ? v : v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')) + '%';
@@ -182,7 +190,8 @@ const UI = {
       label: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1.5"/>',
       upload: '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
       printer: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
-      plus: '<path d="M12 5v14M5 12h14"/>'
+      plus: '<path d="M12 5v14M5 12h14"/>',
+      x: '<path d="M18 6L6 18M6 6l12 12"/>'
     }[name] || '';
     return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
   },

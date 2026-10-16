@@ -12,3 +12,6 @@ tests/shots/
 
 # Grabaciones de reuniones: nunca en la carpeta publicada
 *.mp4
+
+# Notas internas de reuniones dentro de docs/: no deben publicarse
+docs/_TEMPORAL_*

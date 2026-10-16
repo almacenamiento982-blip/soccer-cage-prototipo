@@ -455,6 +455,72 @@ const scenarios = {
   }
 };
 
+/* Compras a proveedor (reunión 14-10): pedido → llegado → vendido → saldo y aviso de reposición */
+scenarios.compras = async function (browser) {
+  const page = await newPage(browser, { viewport: { width: 1366, height: 900 } });
+  await page.goto(BASE);
+  await page.click('#btnAdmin');
+  await page.click('.side-link[data-page="purchases"]');
+  await page.waitForSelector('#page-purchases.active .kpi');
+  ok(await page.locator('#page-purchases [data-po-receive]').count() === 3, 'la demo muestra 3 pedidos a proveedor');
+  ok(await page.locator('#poBadge').innerText() === String(await page.evaluate(() => Store.reorderList().length)), 'el menú cuenta los uniformes por pedir');
+  await page.shot('50-compras', true);
+
+  // Desplegar las tallas de un uniforme en la tabla de etapas
+  await page.fill('#poQ', 'camp short');
+  await page.waitForTimeout(400);
+  await page.locator('[data-po-toggle="camp-short"]').click();
+  ok(await page.locator('.po-stages .sub-row').count() === 7, 'al tocar el uniforme se ven sus 7 tallas', await page.locator('.po-stages .sub-row').count());
+  await page.shot('51-compras-etapas');
+
+  // Nuevo pedido desde "hay que pedir más"
+  const needId = await page.evaluate(() => Store.reorderList()[0].p.id);
+  await page.fill('#poQ', '');
+  await page.waitForTimeout(400);
+  await page.click(`[data-po-order="${needId}"]`);
+  await page.waitForSelector('#poSave');
+  ok(await page.locator('[data-po-qty]').count() > 0 && !(await page.locator('#poSave').isDisabled()), 'el pedido llega con cantidades sugeridas');
+  await page.click('#poSave');
+  ok(await page.locator('#errPoSupplier.show').count() === 1, 'sin proveedor no se crea');
+  await page.fill('#poSupplier', 'Proveedor Prueba');
+  await page.selectOption('#poPick', 'camp-jersey');
+  await page.locator('[data-po-qty^="1|"]').first().fill('12');
+  await page.locator('[data-po-qty^="1|"]').first().dispatchEvent('change');
+  ok(await page.locator('#poSupplier').inputValue() === 'Proveedor Prueba', 'añadir un uniforme conserva el proveedor escrito');
+  await page.shot('52-compras-nuevo-pedido');
+  const stockBefore = await page.evaluate(() => Store.variantOf('camp-jersey', 'YXS').stock);
+  await page.click('#poSave');
+  await page.waitForSelector('#poSave', { state: 'detached' });
+  const created = await page.evaluate(() => Store.purchases[0]);
+  ok(created.number === 'OC-0004' && created.supplier === 'Proveedor Prueba' && created.lines.some(l => l.variantId === 'camp-jersey-YXS' && l.qty === 12), 'pedido OC-0004 creado con las dos referencias', created.lines.length);
+  ok(await page.evaluate(() => Store.variantOf('camp-jersey', 'YXS').stock) === stockBefore, 'crear el pedido no suma al stock');
+  ok(await page.evaluate(id => !Store.reorderState(Store.product(id)).need, needId), 'el uniforme sale de "hay que pedir más" porque ya viene en camino');
+
+  // Registrar llegada parcial
+  await page.click(`[data-po-receive="${created.id}"]`);
+  await page.waitForSelector('#rcSave');
+  await page.locator('[data-recv="camp-jersey-YXS"]').fill('5');
+  await page.click('#rcSave');
+  await page.waitForSelector('#rcSave', { state: 'detached' });
+  const after = await page.evaluate(() => ({ stock: Store.variantOf('camp-jersey', 'YXS').stock, coming: Store.onOrder('camp-jersey-YXS'), status: Store.purchases[0].status, mov: Store.movements[0].ref }));
+  ok(after.stock === stockBefore + 5 && after.coming === 7 && after.mov === 'OC-0004', 'llegan 5 de 12: suman al stock y 7 siguen en camino', after);
+
+  await page.click('.side-link[data-page="inventory"]');
+  await page.fill('#invQ', 'CAMP-JER-YXS');
+  await page.waitForTimeout(400);
+  ok(/\+7 en camino/.test(await page.locator('#page-inventory tbody').innerText()), 'el inventario muestra lo que viene en camino');
+
+  // Configuración del aviso
+  await page.click('.side-link[data-page="settings"]');
+  await page.fill('#stReorder', '15');
+  await page.fill('#stStockMail', 'eduardo@soccercage.com');
+  await page.click('#stOpsSave');
+  ok(await page.evaluate(() => [Store.settings.reorderPointDefault, Store.settings.stockAlertEmails].join('|')) === '15|eduardo@soccercage.com', 'guarda el punto de aviso y quién recibe el correo');
+
+  ok(page.issues.length === 0, 'sin errores ni advertencias en consola', page.issues);
+  await page.context().close();
+};
+
 /* .xlsx mínimo (zip + XML) para probar el lector sin librerías. */
 function makeXlsx(rows) {
   const zlib = require('zlib');

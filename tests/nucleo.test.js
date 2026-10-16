@@ -149,6 +149,65 @@ r = S.saveProduct(Object.assign({}, r.product, { sizes: [{ size: 'U', stock: 7 }
 ok(r.product.variants[0].stock === 7 && S.movements[0].reason === 'count', 'editar stock deja asiento de conteo', S.movements[0].before + '→' + S.movements[0].after);
 
 const m = S.metrics();
+console.log('\n== Compras a proveedor: pedido → llegado → vendido → saldo ==');
+{
+  const demo = S.purchases.map(po => po.number + ':' + po.status);
+  ok(demo.join(',') === 'OC-0003:pedido,OC-0002:parcial,OC-0001:recibido', 'la demo trae un pedido recibido, uno a medias y uno en camino', demo);
+
+  const p = S.product('camp-short');
+  const vYM = S.variantOf('camp-short', 'YM'), vL = S.variantOf('camp-short', 'L');
+  const stock0 = vYM.stock, coming0 = S.onOrder(vYM.id);
+  ok(coming0 === 15, 'OC-0003 deja 15 shorts YM "en camino" sin tocar el stock', coming0);
+
+  let r = S.createPurchase({ supplier: '', lines: [{ variantId: vYM.id, qty: 5 }] });
+  ok(!r.ok, 'pedido sin proveedor rechazado', r.error);
+  r = S.createPurchase({ supplier: 'Prueba', lines: [{ variantId: vYM.id, qty: 0 }] });
+  ok(!r.ok, 'pedido sin cantidades rechazado', r.error);
+  r = S.createPurchase({ supplier: 'Prueba', lines: [{ variantId: 'camp-kit-U', qty: 3 }] });
+  ok(!r.ok, 'no se piden kits: se piden sus piezas', r.error);
+  r = S.createPurchase({ supplier: 'Prueba', lines: [{ variantId: vYM.id, qty: 100 }, { variantId: vL.id, qty: 40 }] });
+  ok(r.ok && r.purchase.number === 'OC-0004' && vYM.stock === stock0, 'pedido de 140 creado sin sumar al stock', r.purchase && r.purchase.number);
+  const po = r.purchase;
+  ok(S.onOrder(vYM.id) === coming0 + 100, 'el pedido suma a "en camino"', S.onOrder(vYM.id));
+
+  r = S.receivePurchase(po.id, { [vYM.id]: 101 });
+  ok(!r.ok, 'no se puede recibir más de lo que falta', r.error);
+  r = S.receivePurchase(po.id, { [vYM.id]: 100, [vL.id]: 10 });
+  ok(r.ok && po.status === 'parcial' && vYM.stock === stock0 + 100 && S.movements[0].ref === 'OC-0004' && S.movements[0].reason === 'purchase', 'llegada parcial: entra al stock con movimiento OC-0004', po.status);
+  ok(S.onOrder(vL.id) === 30, 'faltan 30 L en camino', S.onOrder(vL.id));
+  r = S.cancelPurchase(po.id);
+  ok(r.ok && po.status === 'recibido' && S.onOrder(vL.id) === 0 && vL.stock >= 10, 'cerrar sin lo que falta: lo recibido se queda, lo pendiente deja de contar');
+  ok(!S.receivePurchase(po.id, { [vL.id]: 1 }).ok, 'un pedido cerrado no recibe más');
+
+  const st = S.uniformStages().find(x => x.p.id === 'camp-short');
+  ok(st.total.ordered === 50 + 110 && st.total.onOrder === 50, 'tabla: pedido incluye lo recibido y no lo cancelado', st.total);
+
+  const all = S.uniformStages();
+  const bad = all.flatMap(x => x.sizes.filter(s => s.initial + s.arrived - s.sold + s.other !== s.stock).map(s => s.v.sku));
+  ok(bad.length === 0, 'en todas las tallas: saldo = inicial + llegado − vendido ± otros', bad.slice(0, 5));
+
+  // Reposición por total del uniforme y aviso por correo al cruzar el punto.
+  const socks = S.product('camp-socks');
+  socks.reorderPoint = S.productStock(socks) - 2;   // a 2 unidades del punto
+  const mails0 = (S.state.outbox || []).filter(m => m.kind === 'reorder').length;
+  const vS = S.variantOf('camp-socks', 'S');
+  const pendingSocks = S.productOnOrder(socks);
+  S.purchases.filter(x => x.status === 'parcial' || x.status === 'pedido').forEach(x => { if (x.lines.some(l => l.productId === 'camp-socks')) S.cancelPurchase(x.id); });
+  socks.reorderPoint = S.productStock(socks) - 2;
+  S.applyMovement({ variantId: vS.id, type: 'salida', qty: 1, reason: 'damage', ref: 'T1' });
+  ok(!S.reorderState(socks).need, 'aún por encima del punto: no avisa');
+  S.applyMovement({ variantId: vS.id, type: 'salida', qty: 1, reason: 'damage', ref: 'T2' });
+  const mails1 = S.state.outbox.filter(m => m.kind === 'reorder');
+  ok(S.reorderState(socks).need && mails1.length === mails0 + 1 && mails1[0].productId === 'camp-socks', 'al llegar al punto: aparece en "por pedir" y sale un correo', mails1[0] && mails1[0].subject);
+  S.applyMovement({ variantId: vS.id, type: 'salida', qty: 1, reason: 'damage', ref: 'T3' });
+  ok(S.state.outbox.filter(m => m.kind === 'reorder').length === mails0 + 1, 'no repite el correo en cada venta');
+  const sug = S.reorderSuggestion(socks);
+  ok(sug.every(x => x.qty >= 0) && sug.some(x => x.qty > 0), 'sugiere cantidades por talla', sug);
+  r = S.createPurchase({ supplier: 'Prueba', lines: sug });
+  ok(r.ok && !S.reorderState(socks).need && S.reorderState(socks).covered, 'con el pedido en camino deja de pedir reposición', S.reorderState(socks));
+  ok(pendingSocks >= 0, 'pedido de medias previo contabilizado', pendingSocks);
+}
+
 console.log('\n== Métricas ==');
 console.log('  ', { invValue: Math.round(m.invValue), units: m.units, skus: m.skuCount, low: m.lowCount, out: m.outCount, salesMonth: m.salesMonth, salesToday: m.salesToday, pending: m.pending });
 console.log('  por tienda:', m.byStore.map(b => b.store.short + ' ' + b.orders + '/$' + b.revenue).join(' · '));

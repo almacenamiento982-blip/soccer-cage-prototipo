@@ -271,6 +271,7 @@ const sections = {
     // Carrito con varias líneas: cambiar cantidad
     for (const s of ['YS', 'YL', 'S', 'M']) await page.evaluate(sz => Store.addItem('camp-jersey', Store.variantOf('camp-jersey', sz).id, 1), s);
     await page.evaluate(() => Shop.renderCart());
+    await page.waitForTimeout(400);   // el cajón termina de abrirse antes de medir
     await page.locator('#cartBody').evaluate(e => { e.scrollTop = 10000; });
     const cMax = await page.locator('#cartBody').evaluate(e => e.scrollTop);
     await page.locator('[data-inc]').last().click();

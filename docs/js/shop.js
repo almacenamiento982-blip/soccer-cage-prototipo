@@ -861,7 +861,8 @@ const Shop = {
     const foot = document.getElementById('cartFoot');
     const cart = Store.cart;
     const scrollTop = body.scrollTop;   // se conserva al cambiar cantidades
-    requestAnimationFrame(() => { body.scrollTop = scrollTop; });
+    // Se restaura en cuanto hay contenido nuevo y otra vez tras pintar, por si el diseño aún se movía.
+    const keepScroll = () => { body.scrollTop = scrollTop; requestAnimationFrame(() => { body.scrollTop = scrollTop; }); };
 
     if (!cart.length) {
       body.innerHTML = UI.empty(
@@ -901,6 +902,7 @@ const Shop = {
           </div>
         </div>`;
     }).join('');
+    keepScroll();
 
     const t = Store.cartTotals('pickup');
     const gate = Store.kitGate();
