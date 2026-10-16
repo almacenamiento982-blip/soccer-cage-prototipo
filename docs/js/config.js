@@ -10,7 +10,7 @@
    Con la base activa, ?modo=demo sigue abriendo la demo local.
    ============================================================ */
 window.SOCCERCAGE_CLOUD = {
-  enabled: false,
+  enabled: true,
   url: 'https://abrjwvfeymexkwecjpxr.supabase.co',
   key: 'sb_publishable_rFqmTypStQiaEZu4lfaqCg__cziAcGE'
 };
