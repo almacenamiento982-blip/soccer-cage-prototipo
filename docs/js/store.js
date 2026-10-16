@@ -85,6 +85,12 @@ const Store = {
    */
   save() {
     if (this._silent) return true;
+    if (this.cloudMode) {
+      // Base compartida: lo propio de este navegador se queda aquí; lo demás va al servidor.
+      this.saveLocalPart();
+      if (!this.readOnly) Cloud.queueSave(() => this.sharedState());
+      return true;
+    }
     try {
       const disk = Number(localStorage.getItem(REV_KEY) || 0);
       const mine = Number(this.state.rev || 0);
@@ -103,6 +109,75 @@ const Store = {
       if (this.onSaveError) this.onSaveError(e);
       return false;
     }
+  },
+
+  /* ---------- Modo nube (Supabase) ----------
+     El estado completo es compartido, salvo lo que es de cada navegador. */
+  cloudMode: false,
+  readOnly: false,    // tienda pública sin sesión: solo catálogo y stock
+  LOCAL_KEYS: ['carts', 'session', 'currentStore', 'currentUser'],
+  LOCAL_DB: 'soccercage_local',
+
+  sharedState() {
+    const s = {};
+    Object.keys(this.state).forEach(k => { if (!this.LOCAL_KEYS.includes(k) && k !== 'rev') s[k] = this.state[k]; });
+    return s;
+  },
+
+  localPart() {
+    try { return JSON.parse(localStorage.getItem(this.LOCAL_DB) || '{}') || {}; } catch (e) { return {}; }
+  },
+
+  saveLocalPart() {
+    try {
+      const part = {};
+      this.LOCAL_KEYS.forEach(k => { part[k] = this.state[k]; });
+      localStorage.setItem(this.LOCAL_DB, JSON.stringify(part));
+    } catch (e) { /* sin almacenamiento: el carrito no sobrevive a la recarga */ }
+  },
+
+  withLocal(state) {
+    const local = this.localPart();
+    state.carts = local.carts || {};
+    state.session = local.session || null;
+    state.currentStore = local.currentStore || 'camps';
+    state.currentUser = 'u1';
+    ['orders', 'customers', 'movements', 'purchases', 'outbox', 'roster', 'programs', 'users'].forEach(k => { if (!Array.isArray(state[k])) state[k] = []; });
+    if (!state.users.length) state.users = clone(SEED.users);
+    state.counters = state.counters || {};
+    if (!state.stores.some(s => s.id === state.currentStore)) state.currentStore = state.stores[0] ? state.stores[0].id : 'camps';
+    return state;
+  },
+
+  /** Datos completos del servidor (equipo con sesión). */
+  adopt(data, rev) {
+    this.readOnly = false;
+    this.state = this.withLocal(data);
+    this.state.rev = rev;
+    this.migrate();
+    if (this.state.version !== this.versionTag()) { this.mergeCatalog(); this.state.version = this.versionTag(); this.save(); }
+  },
+
+  /** Catálogo público (sin sesión): lo justo para mostrar y vender la tienda. */
+  adoptCatalog(cat) {
+    this.readOnly = true;
+    this.state = this.withLocal({
+      version: cat.version, products: cat.products || [], stores: cat.stores || [],
+      settings: Object.assign({ lowStockGlobal: 4, reorderPointDefault: 10, parcel: { weightOz: 2, length: 12, width: 10, height: 2 } }, cat.settings || {}),
+      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios']
+    });
+    this.state.rev = cat.rev;
+  },
+
+  /** Arranque limpio para datos reales: catálogo y tiendas, todo el stock en cero, sin historial. */
+  resetClean() {
+    this.reset();
+    const st = this.state;
+    st.products.forEach(p => p.variants.forEach(v => { v.stock = 0; v.reserved = 0; }));
+    Object.assign(st, { orders: [], customers: [], movements: [], purchases: [], outbox: [], carts: {}, session: null });
+    st.roster = [];
+    st.counters = { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100, purchase: 0 };
+    this.save();
   },
 
   /** Otra pestaña guardó: se adopta su estado. Devuelve true si cambió algo. */
@@ -255,7 +330,14 @@ const Store = {
     return { ok: true, store: s };
   },
 
-  user() { return this.state.users.find(u => u.id === this.state.currentUser) || this.state.users[0]; },
+  user() {
+    // Con base compartida, quien trabaja es la persona que inició sesión.
+    if (this.cloudMode && typeof Cloud !== 'undefined' && Cloud.staff) {
+      const s = Cloud.staff, name = s.name || s.email;
+      return { id: 'staff:' + s.email, name, role: s.role, initials: name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() };
+    }
+    return this.state.users.find(u => u.id === this.state.currentUser) || this.state.users[0];
+  },
 
   product(id) { return this.state.products.find(p => p.id === id); },
 
@@ -693,6 +775,8 @@ const Store = {
     const cart = this.cart;
     const st = this.currentStore;
     if (!cart.length) return { ok: false, error: I18N.t('err.cartEmpty') };
+    // Tienda pública en la fase de prueba: se navega y se arma el carrito; el cobro llega con Stripe.
+    if (this.readOnly) return { ok: false, code: 'trial', error: I18N.t('err.storeTrial') };
 
     const fulfillment = data.fulfillment === 'shipping' ? 'shipping' : 'pickup';
     // Cada tienda decide cómo entrega: las academias, solo por USPS.

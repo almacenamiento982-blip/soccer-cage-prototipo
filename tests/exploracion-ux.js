@@ -12,6 +12,8 @@ const okLine = (where, what) => console.log(`  ok   ${where}: ${what}`);
 async function run(browser, label, opts) {
   console.log(`\n== ${label} ==`);
   const ctx = await browser.newContext(opts);
+  // Estas pruebas son de la demo local: no deben depender de la base compartida.
+  await ctx.addInitScript(() => { window.SOCCERCAGE_FORCE_LOCAL = true; });
   const page = await ctx.newPage();
   page.on('pageerror', e => note('ERROR', label, 'excepción: ' + e.message));
   page.on('console', m => { if (m.type() === 'error') note('ERROR', label, 'consola: ' + m.text()); });

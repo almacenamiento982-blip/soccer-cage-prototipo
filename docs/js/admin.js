@@ -131,7 +131,7 @@ const Admin = {
     return this.head(
       I18N.t('adm.dashboard.title'),
       I18N.t('adm.dashboard.sub', { date: UI.date(new Date().toISOString()), company: UI.esc(Store.settings.company) }),
-      `<button class="btn btn-sm" id="dashReset">${I18N.t('adm.dashboard.resetDemo')}</button>
+      `${Store.cloudMode ? '' : `<button class="btn btn-sm" id="dashReset">${I18N.t('adm.dashboard.resetDemo')}</button>`}
        <button class="btn btn-primary btn-sm" id="dashNew">${I18N.t('adm.dashboard.newProduct')}</button>`
     ) + `
 
@@ -261,7 +261,8 @@ const Admin = {
   dashboardBind() {
     document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => this.go(b.dataset.goto));
     document.getElementById('dashNew').onclick = () => this.productForm();
-    document.getElementById('dashReset').onclick = () => this.confirmReset();
+    const reset = document.getElementById('dashReset');
+    if (reset) reset.onclick = () => this.confirmReset();
   },
 
   confirmReset() {
@@ -2856,6 +2857,7 @@ const Admin = {
         </div>
       </div>
 
+      ${Store.cloudMode ? this.teamCardHTML() : `
       <div class="card">
         <div class="card-head"><h2>${I18N.t('adm.settings.usersPerms')}</h2></div>
         <div class="card-body">
@@ -2877,7 +2879,7 @@ const Admin = {
             <div class="hint">${I18N.t('adm.settings.activeUserHint')}</div>
           </div>
         </div>
-      </div>
+      </div>`}
 
       <div class="card">
         <div class="card-head"><h2>${I18N.t('adm.settings.catalogTitle')}</h2></div>
@@ -2890,16 +2892,22 @@ const Admin = {
         </div>
       </div>
 
+      ${Store.cloudMode ? this.backupCardHTML() : ''}
+
       <div class="card">
-        <div class="card-head"><h2>${I18N.t('adm.settings.demoData')}</h2></div>
+        <div class="card-head"><h2>${I18N.t(Store.cloudMode ? 'cloud.dataTitle' : 'adm.settings.demoData')}</h2></div>
         <div class="card-body">
-          <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t('adm.settings.demoDataBody')}</p>
+          <p class="muted" style="font-size:13.5px;line-height:1.6;margin-bottom:14px">${I18N.t(Store.cloudMode ? 'cloud.dataBody' : 'adm.settings.demoDataBody')}</p>
           <div class="kv"><span class="k">${I18N.t('adm.settings.products')}</span><span class="v">${Store.products.length}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.skus')}</span><span class="v">${Store.products.reduce((n, p) => n + p.variants.length, 0)}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.orders')}</span><span class="v">${Store.orders.length}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.movements')}</span><span class="v">${Store.movements.length}</span></div>
           <div class="kv"><span class="k">${I18N.t('adm.settings.customers')}</span><span class="v">${Store.customers.length}</span></div>
-          <button class="btn btn-danger" style="margin-top:16px" id="stReset">${I18N.t('adm.settings.resetDemoBtn')}</button>
+          ${!Store.cloudMode ? `<button class="btn btn-danger" style="margin-top:16px" id="stReset">${I18N.t('adm.settings.resetDemoBtn')}</button>`
+            : Cloud.isAdmin ? `<div class="store-actions" style="margin-top:16px">
+                <button class="btn btn-danger btn-sm" id="stResetClean">${I18N.t('cloud.resetClean')}</button>
+                <button class="btn btn-sm" id="stResetDemo">${I18N.t('cloud.resetDemo')}</button>
+              </div>` : `<p class="muted tiny" style="margin-top:12px">${I18N.t('cloud.adminOnly')}</p>`}
         </div>
       </div>
     </div>`;
@@ -2948,6 +2956,8 @@ const Admin = {
       UI.toast('ok', I18N.t('adm.settings.saved'), I18N.t('adm.settings.savedBody'));
     };
 
+    if (Store.cloudMode) { this.cloudSettingsBind(); return; }
+
     document.getElementById('stUser').onchange = e => {
       Store.state.currentUser = e.target.value;
       Store.save();
@@ -2956,5 +2966,120 @@ const Admin = {
     };
 
     document.getElementById('stReset').onclick = () => this.confirmReset();
+  },
+
+  /* ============================================================
+     BASE COMPARTIDA — equipo, copias de seguridad y reinicio
+     Los permisos los aplica el servidor; aquí solo se muestran
+     las acciones que corresponden a cada rol.
+     ============================================================ */
+  teamCardHTML() {
+    const me = Cloud.staff || {};
+    return `
+      <div class="card">
+        <div class="card-head"><div><h2>${I18N.t('cloud.teamTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('cloud.teamSub')}</p></div></div>
+        <div class="card-body">
+          <div class="list-row">
+            <div class="thumb" style="background:var(--ink-800);width:34px;height:34px">${UI.esc(Store.user().initials)}</div>
+            <div style="flex:1;min-width:0"><div class="cell-main">${UI.esc(me.name || me.email)} · ${I18N.t('cloud.you')}</div><div class="cell-sub">${UI.esc(me.email || '')}</div></div>
+            <span class="badge ${me.role === 'admin' ? 'badge-gold' : 'badge-neutral'}">${I18N.t('cloud.role.' + me.role)}</span>
+          </div>
+          ${Cloud.isAdmin ? `
+          <div id="teamList" class="team-list"><p class="muted tiny">${I18N.t('cloud.loadingShort')}</p></div>
+          <div class="team-add">
+            <div class="form-grid tight" style="grid-template-columns:2fr 1.4fr 1fr">
+              <div class="field"><label for="tmEmail">${I18N.t('checkout.email')}</label><input class="input" id="tmEmail" type="email" placeholder="nombre@empresa.com"></div>
+              <div class="field"><label for="tmName">${I18N.t('cloud.memberName')}</label><input class="input" id="tmName" placeholder="Eduardo"></div>
+              <div class="field"><label for="tmRole">${I18N.t('cloud.memberRole')}</label><select class="select" id="tmRole"><option value="staff">${I18N.t('cloud.role.staff')}</option><option value="admin">${I18N.t('cloud.role.admin')}</option></select></div>
+            </div>
+            <div class="err-msg" id="tmErr"></div>
+            <button class="btn btn-primary btn-sm" id="tmAdd">${I18N.t('cloud.addMember')}</button>
+            <p class="hint" style="margin-top:10px">${I18N.t('cloud.addHint')}</p>
+          </div>` : `<p class="muted tiny" style="margin-top:12px">${I18N.t('cloud.teamStaffNote')}</p>`}
+        </div>
+      </div>`;
+  },
+
+  backupCardHTML() {
+    if (!Cloud.isAdmin) return '';
+    return `
+      <div class="card">
+        <div class="card-head"><div><h2>${I18N.t('cloud.backupTitle')}</h2><p class="muted tiny" style="margin-top:2px">${I18N.t('cloud.backupSub')}</p></div></div>
+        <div class="card-body"><div id="histList"><p class="muted tiny">${I18N.t('cloud.loadingShort')}</p></div></div>
+      </div>`;
+  },
+
+  cloudError(e) {
+    const map = { not_admin: 'cloud.err.notAdmin', last_admin: 'cloud.err.lastAdmin', cannot_remove_self: 'cloud.err.self', invalid_email: 'cloud.err.email', not_staff: 'cloud.err.notStaff' };
+    return map[e.message] ? I18N.t(map[e.message]) : (e.code === 'offline' ? I18N.t('cloud.offline') : e.message);
+  },
+
+  renderTeam(list) {
+    const box = document.getElementById('teamList');
+    if (!box) return;
+    const me = (Cloud.staff || {}).email;
+    const others = list.filter(m => m.email !== me);
+    box.innerHTML = others.length ? others.map(m => `
+      <div class="list-row">
+        <div class="thumb" style="background:var(--ink-600);width:34px;height:34px">${UI.esc((m.name || m.email).slice(0, 2).toUpperCase())}</div>
+        <div style="flex:1;min-width:0"><div class="cell-main">${UI.esc(m.name || '—')}</div><div class="cell-sub">${UI.esc(m.email)}</div></div>
+        <span class="badge ${m.role === 'admin' ? 'badge-gold' : 'badge-neutral'}">${I18N.t('cloud.role.' + m.role)}</span>
+        <button class="btn btn-sm btn-ghost" data-tm-remove="${UI.esc(m.email)}">${I18N.t('cloud.removeMember')}</button>
+      </div>`).join('') : `<p class="muted tiny">${I18N.t('cloud.teamEmpty')}</p>`;
+    box.querySelectorAll('[data-tm-remove]').forEach(b => b.onclick = () => {
+      const email = b.dataset.tmRemove;
+      UI.confirm(I18N.t('cloud.removeQ', { email }), I18N.t('cloud.removeBody'), async () => {
+        try { this.renderTeam(await Cloud.removeStaff(email)); UI.toast('ok', I18N.t('cloud.removed'), email); }
+        catch (e) { UI.toast('danger', I18N.t('cloud.err.title'), this.cloudError(e)); }
+      }, true);
+    });
+  },
+
+  renderHistory(list) {
+    const box = document.getElementById('histList');
+    if (!box) return;
+    box.innerHTML = list.length ? list.slice(0, 12).map(h => `
+      <div class="kv"><span class="k">${UI.date(h.saved_at, true)} · ${UI.esc(h.saved_by || '—')} <span class="muted mono tiny">v${h.rev}</span></span>
+      <span class="v"><button class="btn btn-sm btn-ghost" data-restore="${h.id}" data-rev="${h.rev}">${I18N.t('cloud.restoreBtn')}</button></span></div>`).join('')
+      : `<p class="muted tiny">${I18N.t('cloud.backupEmpty')}</p>`;
+    box.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => {
+      UI.confirm(I18N.t('cloud.restoreQ', { rev: b.dataset.rev }), I18N.t('cloud.restoreBody'), async () => {
+        try {
+          if (Cloud.pending) await new Promise(r => setTimeout(r, 1500));
+          await Cloud.restore(Number(b.dataset.restore));
+          const cur = await Cloud.loadState();
+          Store.adopt(cur.data, Cloud.rev);
+          App.refreshAll();
+          UI.toast('ok', I18N.t('cloud.restored'), I18N.t('cloud.restoredBody', { rev: b.dataset.rev }));
+        } catch (e) { UI.toast('danger', I18N.t('cloud.err.title'), this.cloudError(e)); }
+      }, true);
+    });
+  },
+
+  cloudSettingsBind() {
+    if (!Cloud.isAdmin) return;
+    Cloud.listStaff().then(l => this.renderTeam(l)).catch(e => { const b = document.getElementById('teamList'); if (b) b.textContent = this.cloudError(e); });
+    Cloud.listHistory().then(l => this.renderHistory(l)).catch(e => { const b = document.getElementById('histList'); if (b) b.textContent = this.cloudError(e); });
+
+    document.getElementById('tmAdd').onclick = async () => {
+      const email = document.getElementById('tmEmail').value.trim(), name = document.getElementById('tmName').value.trim();
+      const err = document.getElementById('tmErr');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = I18N.t('cloud.err.email'); err.classList.add('show'); return; }
+      err.classList.remove('show');
+      try {
+        this.renderTeam(await Cloud.upsertStaff(email, name, document.getElementById('tmRole').value));
+        document.getElementById('tmEmail').value = '';
+        document.getElementById('tmName').value = '';
+        UI.toast('ok', I18N.t('cloud.added', { email }), I18N.t('cloud.addedBody'));
+      } catch (e) { err.textContent = this.cloudError(e); err.classList.add('show'); }
+    };
+
+    const reset = clean => UI.confirm(I18N.t(clean ? 'cloud.resetCleanQ' : 'cloud.resetDemoQ'), I18N.t('cloud.resetBody'), () => {
+      if (clean) Store.resetClean(); else Store.reset();
+      App.refreshAll();
+      UI.toast('ok', I18N.t('cloud.resetDone'), I18N.t('cloud.resetDoneBody'));
+    }, true);
+    document.getElementById('stResetClean').onclick = () => reset(true);
+    document.getElementById('stResetDemo').onclick = () => reset(false);
   }
 };

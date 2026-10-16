@@ -1203,6 +1203,16 @@ const Shop = {
 
     setTimeout(() => {
       const r = Store.placeOrder(data);
+      if (!r.ok && r.code === 'trial') {
+        // Tienda pública durante la prueba: todo funciona menos el cobro, que llega con Stripe.
+        UI.modal(`
+          <div class="modal-head"><h2>${I18N.t('trial.title')}</h2></div>
+          <div class="modal-body">
+            <div class="alert alert-info">${UI.infoIcon()}<div><div class="alert-body">${I18N.t('trial.body')}</div></div></div>
+          </div>
+          <div class="modal-foot"><button class="btn btn-primary" onclick="UI.closeModal();Shop.openCart()">${I18N.t('pay.reviewCart')}</button></div>`, 'narrow');
+        return;
+      }
       if (!r.ok) {
         UI.modal(`
           <div class="modal-head"><h2>${I18N.t('pay.failedTitle')}</h2></div>

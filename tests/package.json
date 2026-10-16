@@ -9,6 +9,7 @@
     "test": "npm run test:nucleo && npm run test:navegador"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "playwright-core": "^1.50.0"
   }
 }

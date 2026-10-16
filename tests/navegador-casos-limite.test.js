@@ -346,6 +346,8 @@ const sections = {
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+  // Estas pruebas son de la demo local: no deben depender de la base compartida.
+  await ctx.addInitScript(() => { window.SOCCERCAGE_FORCE_LOCAL = true; });
   const page = await ctx.newPage();
   const issues = watch(page);
   await page.goto(BASE);

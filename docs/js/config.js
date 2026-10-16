@@ -1,0 +1,16 @@
+/* ============================================================
+   Conexión con la base de datos compartida (Supabase).
+
+   La URL y la clave "publishable" son públicas por diseño: van en
+   la página web de cualquier sitio que use Supabase. La seguridad
+   la dan las reglas del servidor (supabase/schema.sql).
+   NUNCA poner aquí la clave secreta ni la service_role.
+
+   enabled: false → demo local en el navegador (como siempre).
+   Con la base activa, ?modo=demo sigue abriendo la demo local.
+   ============================================================ */
+window.SOCCERCAGE_CLOUD = {
+  enabled: false,
+  url: 'https://abrjwvfeymexkwecjpxr.supabase.co',
+  key: 'sb_publishable_rFqmTypStQiaEZu4lfaqCg__cziAcGE'
+};

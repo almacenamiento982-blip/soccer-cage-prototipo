@@ -9,13 +9,13 @@ vm.runInContext(fs.readFileSync(path.join(DOCS, 'js/i18n.js'), 'utf8') + '\nglob
 const DICT = ctx.__D;
 
 const NS = ['nav', 'shop', 'cart', 'checkout', 'pay', 'confirm', 'side', 'adm', 'cmp', 'err', 'sys', 'acct', 'gate', 'kit',
-  'fulfill', 'store', 'cat', 'kind', 'size', 'reason', 'stock', 'order', 'role', 'program', 'time', 'ui', 'imp', 'mail'];
+  'fulfill', 'store', 'cat', 'kind', 'size', 'reason', 'stock', 'order', 'role', 'program', 'time', 'ui', 'imp', 'mail', 'cloud', 'trial'];
 const keyRe = /['"`]((?:[a-z][A-Za-z0-9]*)(?:\.[A-Za-z0-9_]+)+)['"`]/g;
 
 const used = new Map();
 const add = (k, where) => { if (!used.has(k)) used.set(k, where); };
 
-for (const f of ['js/app.js', 'js/store.js', 'js/ui.js', 'js/shop.js', 'js/admin.js', 'js/compare.js', 'js/data.js']) {
+for (const f of ['js/app.js', 'js/cloud.js', 'js/store.js', 'js/ui.js', 'js/shop.js', 'js/admin.js', 'js/compare.js', 'js/data.js']) {
   const src = fs.readFileSync(path.join(DOCS, f), 'utf8');
   let m;
   while ((m = keyRe.exec(src))) {
@@ -33,6 +33,8 @@ const dyn = {
   'reason.': ['sale', 'sale_kit', 'initial', 'purchase', 'return', 'count', 'fix', 'damage', 'courtesy', 'loss', 'delivery_academy', 'delivery_clinic', 'delivery_undo'],
   'stock.': ['ok', 'bajo', 'agotado', 'inactivo'],
   'order.statusPickup.': ['enviado', 'completado'],
+  'cloud.role.': ['admin', 'staff'],
+  'cloud.sync.': ['saving', 'saved', 'error'],
   'adm.po.status.': ['pedido', 'parcial', 'recibido', 'cancelado'],
   'adm.orders.status.': ['pendiente', 'procesando', 'enviado', 'completado', 'cancelado'],
   'pay.status.': ['pagado', 'pendiente', 'fallido', 'reembolsado'],

@@ -15,6 +15,8 @@ const ok = (cond, label, extra) => {
 
 async function newPage(browser, opts) {
   const ctx = await browser.newContext(opts);
+  // Estas pruebas son de la demo local: no deben depender de la base compartida.
+  await ctx.addInitScript(() => { window.SOCCERCAGE_FORCE_LOCAL = true; });
   const page = await ctx.newPage();
   const issues = [];
   page.on('console', m => { if (['error', 'warning'].includes(m.type())) issues.push(m.type() + ': ' + m.text()); });

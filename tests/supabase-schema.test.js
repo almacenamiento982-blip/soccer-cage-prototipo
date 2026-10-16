@@ -1,0 +1,116 @@
+// Prueba del esquema de Supabase (supabase/schema.sql) en un Postgres real (PGlite).
+// Simula lo que Supabase pone alrededor: los roles anon y authenticated, y auth.jwt()
+// con el correo de quien inició sesión.
+const fs = require('fs');
+const path = require('path');
+const { PGlite } = require('@electric-sql/pglite');
+
+let fails = 0;
+const ok = (cond, label, extra) => {
+  if (!cond) fails++;
+  console.log((cond ? '  ok   ' : '  FAIL ') + label + (extra !== undefined ? '  → ' + JSON.stringify(extra) : ''));
+};
+
+(async () => {
+  const db = new PGlite();
+  await db.exec(`
+    create role anon nologin;
+    create role authenticated nologin;
+    create schema auth;
+    create function auth.jwt() returns jsonb language sql stable as
+      $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+    grant usage on schema auth to anon, authenticated;
+    grant execute on function auth.jwt() to anon, authenticated;
+    grant usage on schema public to anon, authenticated;
+  `);
+  const schema = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'schema.sql'), 'utf8');
+  await db.exec(schema);
+  await db.exec(schema);   // se puede ejecutar dos veces sin romper ni duplicar
+  ok(true, 'el esquema se aplica y se puede volver a ejecutar');
+
+  // Ejecuta una consulta como un rol, con el correo de la sesión.
+  const as = async (role, email, sql, params = []) => {
+    await db.query(`select set_config('request.jwt.claims', $1, false)`, [email ? JSON.stringify({ email, role }) : '']);
+    await db.exec(`set role ${role}`);
+    try { return (await db.query(sql, params)).rows; }
+    finally { await db.exec('reset role'); }
+  };
+  const fails_ = async (fn) => { try { await fn(); return null; } catch (e) { return e.message; } };
+  const admin = 'juventuspreacademymiami@gmail.com';
+
+  console.log('\n== Acceso directo a las tablas ==');
+  ok(!!(await fails_(() => as('anon', null, 'select * from public.app_state'))), 'un visitante no puede leer la tabla de estado');
+  ok(!!(await fails_(() => as('authenticated', admin, 'select * from public.app_state'))), 'ni siquiera el equipo lee la tabla directo: solo por funciones');
+  ok(!!(await fails_(() => as('anon', null, `insert into public.staff values ('x@y.com','x','admin')`))), 'nadie se agrega al equipo por su cuenta');
+
+  console.log('\n== Quién puede qué ==');
+  ok(!!(await fails_(() => as('anon', null, 'select public.load_state()'))), 'un visitante no puede cargar el estado completo');
+  ok(!!(await fails_(() => as('authenticated', 'intruso@gmail.com', 'select public.load_state()'))), 'una cuenta que no está en el equipo tampoco');
+  const me = (await as('authenticated', admin, 'select public.whoami() as w'))[0].w;
+  ok(me && me.role === 'admin', 'la cuenta de la empresa es administradora', me);
+  ok((await as('authenticated', 'intruso@gmail.com', 'select public.whoami() as w'))[0].w === null, 'whoami de alguien ajeno: nulo');
+
+  console.log('\n== Guardar con control de conflictos ==');
+  let st = (await as('authenticated', admin, 'select public.load_state() as s'))[0].s;
+  ok(st.rev === 0 && st.data === null, 'arranca vacío en la revisión 0', st);
+  const state = {
+    version: '6:x', settings: { company: 'Soccer Cage', city: 'Miami, FL', currency: 'USD', orderNotifyEmails: 'rudy@x.com' },
+    stores: [{ id: 'camps', name: 'Summer Camp', stripeAccount: 'acct_123456789' }],
+    products: [
+      { id: 'p1', name: 'Camp Jersey', active: true, cost: 12, minStock: 4, reorderPoint: 10, weightOz: 6, price: 25, variants: [{ id: 'p1-M', stock: 5 }] },
+      { id: 'p2', name: 'Inactiva', active: false, cost: 1, price: 2, variants: [] }
+    ],
+    customers: [{ email: 'mama@example.com', name: 'Mamá' }],
+    orders: [{ number: 'SC-1', total: 50 }]
+  };
+  let r = (await as('authenticated', admin, 'select public.save_state(0, $1::jsonb) as r', [JSON.stringify(state)]))[0].r;
+  ok(r.ok && r.rev === 1, 'primer guardado: revisión 1', r);
+  r = (await as('authenticated', admin, 'select public.save_state(0, $1::jsonb) as r', [JSON.stringify(state)]))[0].r;
+  ok(!r.ok && r.conflict && r.rev === 1, 'guardar sobre una versión vieja da conflicto y no pisa', r);
+  ok(!!(await fails_(() => as('authenticated', admin, `select public.save_state(1, '{"x":1}'::jsonb)`))), 'rechaza un estado sin productos');
+  ok(!!(await fails_(() => as('authenticated', 'intruso@gmail.com', 'select public.save_state(1, $1::jsonb)', [JSON.stringify(state)]))), 'alguien ajeno no puede guardar');
+  ok((await as('authenticated', admin, 'select public.load_state_if_newer(1) as s'))[0].s === null, 'sondeo sin cambios: nulo (barato)');
+
+  console.log('\n== Tienda pública ==');
+  const cat = (await as('anon', null, 'select public.public_catalog() as c'))[0].c;
+  const p1 = cat.products[0];
+  ok(cat.products.length === 1, 'solo productos activos', cat.products.map(p => p.name));
+  ok(p1.cost === undefined && p1.minStock === undefined && p1.reorderPoint === undefined && p1.weightOz === undefined, 'sin costo, mínimos ni punto de reposición', Object.keys(p1));
+  ok(p1.variants[0].stock === 5 && p1.price === 25, 'con precio y stock');
+  ok(cat.stores[0].stripeAccount === undefined, 'sin la cuenta de Stripe de la tienda');
+  ok(cat.customers === undefined && cat.orders === undefined && cat.settings.orderNotifyEmails === undefined, 'sin clientes, pedidos ni correos internos');
+
+  console.log('\n== Equipo y copias de seguridad ==');
+  ok(!!(await fails_(() => as('authenticated', 'intruso@gmail.com', 'select public.list_staff()'))), 'alguien ajeno no ve el equipo');
+  let team = (await as('authenticated', admin, `select public.upsert_staff('Eduardo@SoccerCage.com', 'Eduardo', 'staff') as t`))[0].t;
+  ok(team.some(m => m.email === 'eduardo@soccercage.com' && m.role === 'staff'), 'el admin agrega a Eduardo (el correo se guarda en minúsculas)', team.map(m => m.email));
+  ok(((await as('authenticated', 'eduardo@soccercage.com', 'select public.load_state() as s'))[0].s.rev) === 1, 'Eduardo ya puede leer los datos');
+  ok(!!(await fails_(() => as('authenticated', 'eduardo@soccercage.com', `select public.upsert_staff('otro@x.com','Otro','admin')`))), 'pero no puede agregar gente (no es admin)');
+  ok(!!(await fails_(() => as('authenticated', admin, `select public.upsert_staff('${admin}', 'Soccer Cage', 'staff')`))), 'no se puede quitar el rol al último administrador');
+  ok(!!(await fails_(() => as('authenticated', admin, `select public.remove_staff('${admin}')`))), 'el admin no se puede borrar a sí mismo');
+  ok(!!(await fails_(() => as('authenticated', admin, `select public.upsert_staff('no-es-correo', 'X', 'staff')`))), 'rechaza un correo inválido');
+
+  // Varios guardados: el historial guarda la versión anterior de cada uno.
+  for (let i = 0; i < 3; i++) {
+    const cur = (await as('authenticated', admin, 'select public.load_state() as s'))[0].s;
+    cur.data.settings.city = 'Ciudad ' + i;
+    await as('authenticated', 'eduardo@soccercage.com', 'select public.save_state($1, $2::jsonb)', [cur.rev, JSON.stringify(cur.data)]);
+  }
+  const hist = (await as('authenticated', admin, 'select public.list_history() as h'))[0].h;
+  ok(hist.length === 3 && hist[0].saved_by === 'eduardo@soccercage.com', 'cada guardado deja copia de la versión anterior, con quién la hizo', hist.map(h => h.rev + ':' + h.saved_by));
+  const target = hist.find(h => h.rev === 1);
+  r = (await as('authenticated', admin, 'select public.restore_state($1) as r', [target.id]))[0].r;
+  const now = (await as('authenticated', admin, 'select public.load_state() as s'))[0].s;
+  ok(r.ok && now.data.settings.city === 'Miami, FL' && now.updated_by === admin, 'restaurar vuelve a la versión elegida como un guardado nuevo', { rev: now.rev, city: now.data.settings.city });
+  ok(!!(await fails_(() => as('authenticated', 'eduardo@soccercage.com', 'select public.restore_state(1)'))), 'solo un admin puede restaurar');
+
+  console.log('\n== Concurrencia ==');
+  const base = (await as('authenticated', admin, 'select public.load_state() as s'))[0].s;
+  const a = (await as('authenticated', admin, 'select public.save_state($1, $2::jsonb) as r', [base.rev, JSON.stringify(base.data)]))[0].r;
+  const b = (await as('authenticated', 'eduardo@soccercage.com', 'select public.save_state($1, $2::jsonb) as r', [base.rev, JSON.stringify(base.data)]))[0].r;
+  ok(a.ok && !b.ok && b.conflict && b.updated_by === admin, 'dos personas guardan sobre la misma versión: la segunda recibe conflicto y sabe quién guardó', b);
+
+  await db.close();
+  console.log(fails ? `\n${fails} FALLOS` : '\nTODO OK');
+  process.exit(fails ? 1 : 0);
+})().catch(e => { console.error(e); process.exit(1); });
