@@ -61,6 +61,7 @@ const App = {
     if (r.data) Store.adopt(r.data, Cloud.rev);
     else await this.firstRun();
     Cloud.startPolling();
+    if (!Cloud.pending) this.syncChip('saved');
   },
 
   async loadPublic() {
