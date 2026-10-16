@@ -242,7 +242,9 @@ SEED.history = function (S) {
 
   // Carga inicial de inventario
   at(12, 9, 0);
+  // La demo simula una tienda en marcha: todas las tallas ya tuvieron inventario.
   S.products.forEach(p => p.variants.forEach(v => {
+    v.loaded = true;
     const q = v.stock;
     if (!q) return;
     v.stock = 0;

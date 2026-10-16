@@ -135,10 +135,10 @@ const Admin = {
        <button class="btn btn-primary btn-sm" id="dashNew">${I18N.t('adm.dashboard.newProduct')}</button>`
     ) + `
 
-    <div class="demo-banner">
+    ${Store.state.clean ? '' : `<div class="demo-banner">
       ${UI.infoIcon()}
       <span>${I18N.t('adm.dashboard.dataNote', { date: typeof CATALOG !== 'undefined' ? UI.date(CATALOG.importedAt) : '—' })}</span>
-    </div>
+    </div>`}
 
     <div class="kpi-grid">
       <div class="kpi kpi-principal">
@@ -178,6 +178,16 @@ const Admin = {
           <div class="alert-body">${I18N.t('adm.dashboard.outAlertBody')}</div>
         </div>
         <button class="btn btn-sm" data-goto="alerts">${I18N.t('adm.dashboard.viewAlerts')}</button>
+      </div>` : ''}
+
+    ${m.unloadedCount ? `
+      <div class="alert alert-info">
+        ${UI.infoIcon()}
+        <div style="flex:1">
+          <div class="alert-title">${I18N.t('adm.dashboard.unloadedTitle', { n: m.unloadedCount })}</div>
+          <div class="alert-body">${I18N.t('adm.dashboard.unloadedBody')}</div>
+        </div>
+        <button class="btn btn-sm" data-goto="inventory">${I18N.t('adm.dashboard.unloadedBtn')}</button>
       </div>` : ''}
 
     <div class="grid-2">
@@ -336,6 +346,7 @@ const Admin = {
           <option value="ok"${f.status === 'ok' ? ' selected' : ''}>${I18N.t('adm.inv.available')}</option>
           <option value="bajo"${f.status === 'bajo' ? ' selected' : ''}>${I18N.t('adm.inv.lowStock')}</option>
           <option value="agotado"${f.status === 'agotado' ? ' selected' : ''}>${I18N.t('adm.inv.outOfStock')}</option>
+          <option value="sincargar"${f.status === 'sincargar' ? ' selected' : ''}>${I18N.t('stock.sincargar')}</option>
         </select>
       </div>
 

@@ -208,6 +208,25 @@ console.log('\n== Compras a proveedor: pedido → llegado → vendido → saldo 
   ok(pendingSocks >= 0, 'pedido de medias previo contabilizado', pendingSocks);
 }
 
+console.log('\n== Arranque limpio: "sin cargar" no es "agotado" ==');
+{
+  const snap = JSON.stringify(S.state);
+  S.resetClean();
+  const m = S.metrics();
+  ok(m.alertCount === 0 && m.outCount === 0 && m.unloadedCount > 200, 'tras empezar limpio no hay alertas: todo está "sin cargar"', { alertas: m.alertCount, sinCargar: m.unloadedCount });
+  ok(S.reorderList().length === 0, 'ni avisos de "hay que pedir más"');
+  const jer = S.product('camp-jersey'), vM = S.variantOf('camp-jersey', 'M');
+  ok(S.variantStatus(jer, vM) === 'sincargar' && S.productStatus(jer) === 'sincargar' && S.productStatus(S.product('camp-kit')) === 'sincargar', 'talla, producto y kit: "sin cargar"');
+  S.applyMovement({ variantId: vM.id, type: 'entrada', qty: 3, reason: 'count', ref: 'CONTEO' });
+  ok(S.variantStatus(jer, vM) === 'bajo' && S.metrics().lowCount === 1, 'al cargar 3 (mínimo 4) pasa a "stock bajo" y ahí sí avisa');
+  S.applyMovement({ variantId: vM.id, type: 'salida', qty: 3, reason: 'damage', ref: 'MERMA' });
+  ok(S.variantStatus(jer, vM) === 'agotado' && S.metrics().outCount === 1, 'si una talla cargada llega a 0 es "agotado" de verdad');
+  ok(S.variantStatus(jer, S.variantOf('camp-jersey', 'L')) === 'sincargar', 'las otras tallas siguen "sin cargar"');
+  // Volver al estado anterior para las pruebas siguientes
+  S.state = JSON.parse(snap);
+  S.save();
+}
+
 console.log('\n== Métricas ==');
 console.log('  ', { invValue: Math.round(m.invValue), units: m.units, skus: m.skuCount, low: m.lowCount, out: m.outCount, salesMonth: m.salesMonth, salesToday: m.salesToday, pending: m.pending });
 console.log('  por tienda:', m.byStore.map(b => b.store.short + ' ' + b.orders + '/$' + b.revenue).join(' · '));

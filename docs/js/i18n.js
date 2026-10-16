@@ -1466,5 +1466,10 @@ const I18N = {
     'cloud.err.notStaff': { es: 'Tu cuenta ya no tiene acceso.', en: 'Your account no longer has access.' },
     'ui.showPassword': { es: 'Mostrar contraseña', en: 'Show password' },
     'ui.hidePassword': { es: 'Ocultar contraseña', en: 'Hide password' },
+    'stock.sincargar': { es: 'Sin cargar', en: 'Not loaded' },
+    'shop.badgeSoon': { es: 'Próximamente', en: 'Coming soon' },
+    'adm.dashboard.unloadedTitle': { es: '{n} tallas aún sin inventario cargado', en: '{n} sizes with no stock loaded yet' },
+    'adm.dashboard.unloadedBody': { es: 'No cuentan como agotadas ni generan alertas. Se cargan con Inventario → Importar Excel (conteo físico) o al registrar la llegada de un pedido a proveedor.', en: 'They do not count as out of stock or trigger alerts. Load them via Inventory → Import Excel (physical count) or by recording a supplier order arrival.' },
+    'adm.dashboard.unloadedBtn': { es: 'Cargar inventario', en: 'Load stock' },
   }
 };

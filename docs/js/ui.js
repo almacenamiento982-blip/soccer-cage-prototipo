@@ -211,9 +211,9 @@ const UI = {
 
   /* ---------- Etiquetas de estado ---------- */
   stockBadge(status, qty) {
-    const cls = { ok: 'badge-ok', bajo: 'badge-warn', agotado: 'badge-danger', inactivo: 'badge-neutral' }[status] || 'badge-ok';
+    const cls = { ok: 'badge-ok', bajo: 'badge-warn', agotado: 'badge-danger', inactivo: 'badge-neutral', sincargar: 'badge-neutral' }[status] || 'badge-ok';
     const q = qty !== undefined ? ` · ${qty}` : '';
-    return `<span class="badge ${cls}"><span class="dot"></span>${I18N.t('stock.' + (status in { ok: 1, bajo: 1, agotado: 1, inactivo: 1 } ? status : 'ok'))}${q}</span>`;
+    return `<span class="badge ${cls}"><span class="dot"></span>${I18N.t('stock.' + (status in { ok: 1, bajo: 1, agotado: 1, inactivo: 1, sincargar: 1 } ? status : 'ok'))}${q}</span>`;
   },
 
   /** El mismo estado se nombra distinto si el pedido se envía o se entrega en mano. */

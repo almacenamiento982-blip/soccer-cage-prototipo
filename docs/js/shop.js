@@ -324,7 +324,7 @@ const Shop = {
     grid.innerHTML = this.kits().map(p => {
       const parts = Store.kitParts(p);
       const save = Store.kitSavings(p);
-      const out = Store.productStatus(p) === 'agotado';
+      const out = ['agotado', 'sincargar'].includes(Store.productStatus(p));
       // Tallas de ropa del kit, marcando las que no se pueden armar completas.
       const sizes = this.kitMainSizes(p).map(s => {
         const ok = parts.every(x => {
@@ -381,7 +381,7 @@ const Shop = {
         p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) ||
         (p.description || '').toLowerCase().includes(q));
     }
-    if (this.filters.hideOut) list = list.filter(p => Store.productStatus(p) !== 'agotado');
+    if (this.filters.hideOut) list = list.filter(p => !['agotado', 'sincargar'].includes(Store.productStatus(p)));
 
     const s = this.filters.sort;
     const kindRank = k => SEED.kinds.indexOf(k);
@@ -420,6 +420,7 @@ const Shop = {
 
       const flags = [];
       if (status === 'agotado') flags.push(`<span class="badge badge-danger">${I18N.t('shop.badgeOut')}</span>`);
+      else if (status === 'sincargar') flags.push(`<span class="badge badge-neutral">${I18N.t('shop.badgeSoon')}</span>`);
       else if (scarce) flags.push(`<span class="badge badge-warn">${I18N.t('shop.badgeScarce')}</span>`);
 
       const sizes = p.variants.length === 1 && p.variants[0].size === 'U'

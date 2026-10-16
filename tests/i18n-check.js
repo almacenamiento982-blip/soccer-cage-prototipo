@@ -31,7 +31,7 @@ const dyn = {
   'cat.': ['player', 'goalkeeper', 'accessories'],
   'kind.': ['kit', 'jersey', 'short', 'socks', 'apparel', 'accessory'],
   'reason.': ['sale', 'sale_kit', 'initial', 'purchase', 'return', 'count', 'fix', 'damage', 'courtesy', 'loss', 'delivery_academy', 'delivery_clinic', 'delivery_undo'],
-  'stock.': ['ok', 'bajo', 'agotado', 'inactivo'],
+  'stock.': ['ok', 'bajo', 'agotado', 'inactivo', 'sincargar'],
   'order.statusPickup.': ['enviado', 'completado'],
   'cloud.role.': ['admin', 'staff'],
   'cloud.sync.': ['saving', 'saved', 'error'],

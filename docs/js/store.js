@@ -75,6 +75,13 @@ const Store = {
       done.push('peso-envios');
       changed = true;
     }
+    if (!done.includes('sin-cargar')) {
+      // Datos de antes de este cambio: si el inventario ya estaba en marcha (hay movimientos), todo cuenta como cargado.
+      const running = this.state.movements.length > 0;
+      this.state.products.forEach(p => p.variants.forEach(v => { if (running || v.stock > 0) v.loaded = true; }));
+      done.push('sin-cargar');
+      changed = true;
+    }
     if (changed) this.save();
   },
 
@@ -164,7 +171,7 @@ const Store = {
     this.state = this.withLocal({
       version: cat.version, products: cat.products || [], stores: cat.stores || [],
       settings: Object.assign({ lowStockGlobal: 4, reorderPointDefault: 10, parcel: { weightOz: 2, length: 12, width: 10, height: 2 } }, cat.settings || {}),
-      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios']
+      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios', 'sin-cargar']
     });
     this.state.rev = cat.rev;
   },
@@ -173,9 +180,10 @@ const Store = {
   resetClean() {
     this.reset();
     const st = this.state;
-    st.products.forEach(p => p.variants.forEach(v => { v.stock = 0; v.reserved = 0; }));
+    st.products.forEach(p => p.variants.forEach(v => { v.stock = 0; v.reserved = 0; v.loaded = false; }));
     Object.assign(st, { orders: [], customers: [], movements: [], purchases: [], outbox: [], carts: {}, session: null });
     st.roster = [];
+    st.clean = true;   // datos reales: sin el aviso de "datos de demostración"
     st.counters = { order: 10230, movement: 0, product: 100, customer: 0, delivery: 0, line: 0, roster: 100, purchase: 0 };
     this.save();
   },
@@ -246,7 +254,7 @@ const Store = {
       },
       purchases: [],
       outbox: [],
-      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios'],   // la demo nueva ya nace con estos ajustes
+      migrations: ['academias-solo-usps', 'compras-proveedor', 'peso-envios', 'sin-cargar'],   // la demo nueva ya nace con estos ajustes
       currentUser: 'u1'
     };
     this._silent = true;
@@ -406,8 +414,16 @@ const Store = {
     return p.variants.reduce((s, v) => s + v.stock, 0);
   },
 
+  /** Una talla cuenta como cargada desde su primera entrada de inventario. */
+  loaded(v) { return !!v.loaded || v.stock > 0; },
+  productLoaded(p) {
+    if (this.isKit(p)) return this.kitParts(p).every(x => x.product.variants.some(v => this.loaded(v)));
+    return p.variants.some(v => this.loaded(v));
+  },
+
   variantStatus(p, v) {
     const a = this.available(v);
+    if (!this.loaded(v)) return 'sincargar';
     if (a <= 0) return 'agotado';
     if (a <= (p.minStock || 0)) return 'bajo';
     return 'ok';
@@ -416,7 +432,7 @@ const Store = {
   productStatus(p) {
     if (!p.active) return 'inactivo';
     const total = this.productStock(p);
-    if (total <= 0) return 'agotado';
+    if (total <= 0) return this.productLoaded(p) ? 'agotado' : 'sincargar';
     if (this.isKit(p)) return 'ok';
     const anyLow = p.variants.some(v => this.available(v) > 0 && this.available(v) <= (p.minStock || 0));
     return anyLow ? 'bajo' : 'ok';
@@ -428,12 +444,14 @@ const Store = {
 
     let invValue = 0, invRetail = 0, units = 0;
     const lowItems = [], outItems = [];
+    let unloaded = 0;
     stocked.forEach(p => p.variants.forEach(v => {
       invValue  += v.stock * p.cost;
       invRetail += v.stock * p.price;
       units     += v.stock;
       const a = this.available(v);
-      if (a <= 0) outItems.push({ p, v });
+      if (!this.loaded(v)) unloaded++;
+      else if (a <= 0) outItems.push({ p, v });
       else if (a <= (p.minStock || 0)) lowItems.push({ p, v });
     }));
 
@@ -470,7 +488,7 @@ const Store = {
       kitCount: this.state.products.filter(p => p.active && this.isKit(p)).length,
       skuCount: stocked.reduce((s, p) => s + p.variants.length, 0),
       lowItems, outItems,
-      lowCount: lowItems.length, outCount: outItems.length,
+      lowCount: lowItems.length, outCount: outItems.length, unloadedCount: unloaded,
       salesToday, sales30, tax30, pending, completed,
       topProducts, byStore,
       ticket: paid30.length ? sales30 / paid30.length : 0,
@@ -499,6 +517,7 @@ const Store = {
     }
 
     variant.stock = after;
+    if (type === 'entrada') variant.loaded = true;
 
     const mov = {
       id: 'm' + this.nextId('movement'),
@@ -1051,8 +1070,8 @@ const Store = {
     const available = p.variants.reduce((s, v) => s + this.available(v), 0);
     const coming = this.productOnOrder(p);
     const point = this.reorderPoint(p);
-    const need = point > 0 && available + coming <= point;
-    return { available, coming, point, need, covered: point > 0 && available <= point && !need };
+    const need = point > 0 && available + coming <= point && this.productLoaded(p);
+    return { available, coming, point, need, covered: point > 0 && available <= point && !need && this.productLoaded(p) };
   },
 
   reorderList() {
