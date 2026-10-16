@@ -2,10 +2,9 @@
    Lista de verificación de USPS (vía EasyPost) contra la API real.
 
    Uso, con la clave de PRUEBA de EasyPost (empieza por EZTK, no
-   cobra franqueo):
+   cobra franqueo). La clave va en tools/.env.usps, que git ignora:
 
-     $env:EASYPOST_API_KEY = "EZTK..."        # PowerShell
-     deno run --allow-net --allow-env tools/probar-usps.ts
+     deno run --allow-net --allow-env --env-file=tools/.env.usps tools/probar-usps.ts
 
    Comprueba, en orden, todo lo que tiene que salir bien antes de
    vender con envío:
@@ -27,7 +26,10 @@ import { buyLabel, MemoryShipmentStore } from '../supabase/functions/_shared/lab
 
 const key = Deno.env.get('EASYPOST_API_KEY') ?? '';
 const live = Deno.args.includes('--live');
-if (!key) { console.error('Falta la variable EASYPOST_API_KEY (clave de prueba EZTK...).'); Deno.exit(2); }
+if (!key || /pega_aqui/.test(key)) {
+  console.error('Falta la clave de prueba de EasyPost (EZTK...). Pégala en tools/.env.usps, que no se sube a GitHub.');
+  Deno.exit(2);
+}
 if (!isTestKey(key) && !live) {
   console.error('Esa no es una clave de prueba (EZTK...). Para no comprar etiquetas reales sin querer, el script se detiene.\nSi de verdad quieres probar en producción, añade --live.');
   Deno.exit(2);
